@@ -1,0 +1,73 @@
+spring:
+  profiles:
+    active: local
+
+  # ── MariaDB ──────────────────────────────────────────────
+  datasource:
+    url: jdbc:mariadb://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:techsync}?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Seoul
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.mariadb.jdbc.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: validate          # local 프로필에서는 update로 override
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.MariaDBDialect
+
+  # ── MongoDB ──────────────────────────────────────────────
+  data:
+    mongodb:
+      uri: mongodb://${MONGO_USERNAME}:${MONGO_PASSWORD}@${MONGO_HOST:localhost}:${MONGO_PORT:27017}/${MONGO_DB:techsync}?authSource=admin
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+
+  # ── Cache ─────────────────────────────────────────────────
+  cache:
+    type: redis
+    redis:
+      time-to-live: 600000        # 10분
+
+# ── Server ───────────────────────────────────────────────────
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /
+
+# ── JWT ──────────────────────────────────────────────────────
+jwt:
+  secret: ${JWT_SECRET}
+  access-expiration: 1800000      # 30분
+  refresh-expiration: 604800000   # 7일
+
+# ── Logging ──────────────────────────────────────────────────
+logging:
+  level:
+    root: INFO
+    com.techsync: DEBUG
+    org.springframework.web.socket: DEBUG
+
+---
+spring:
+  config:
+    activate:
+      on-profile: local
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+
+logging:
+  level:
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
