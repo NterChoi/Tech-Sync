@@ -2,6 +2,7 @@
 .env
 *.env.local
 *.env.production
+application-local.yml
 
 # ── 로컬 전용 Claude 설정 ────────────────────────────────────
 CLAUDE.local.md
