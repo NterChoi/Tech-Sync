@@ -8,6 +8,7 @@
 | WORKSPACE          | 워크스페이스       | ROOM_ID(PK), ROOM_NAME, OWNER_ID(FK) |
 | WORKSPACE_MEMBER   | 워크스페이스 멤버  | ROOM_ID+USER_ID(복합PK) |
 | PUSH_SUBSCRIPTION  | Web Push 구독      | SUBSCRIPTION_ID(PK), ENDPOINT, P256DH_KEY, AUTH_KEY |
+| KEYWORD_MASTER     | 추천 키워드 목록   | KEYWORD_ID(PK), KEYWORD_NAME, CATEGORY |
 
 ## MongoDB 컬렉션
 | Collection      | 설명 | 핵심 필드 |
