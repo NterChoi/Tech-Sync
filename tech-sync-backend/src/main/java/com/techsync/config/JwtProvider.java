@@ -70,4 +70,8 @@ public class JwtProvider {
     public String getEmail(String token) {
         return parse(token).get("email", String.class);
     }
+
+    public long getRefreshExpiration() {
+        return refreshExpiration;
+    }
 }
