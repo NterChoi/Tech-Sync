@@ -34,6 +34,9 @@ public class Article {
     @Field("DESCRIPTION")
     private String description;
 
+    @Field("KEYWORD")
+    private String keyword;  // 네이버 수집 시 사용한 키워드 (GEEK은 null)
+
     @Field("PUBLISHED_AT")
     private LocalDateTime publishedAt;
 
@@ -42,12 +45,13 @@ public class Article {
 
     @Builder
     public Article(String sourceId, String source, String title, String link,
-                   String description, LocalDateTime publishedAt, LocalDateTime collectedAt) {
+                   String description, String keyword, LocalDateTime publishedAt, LocalDateTime collectedAt) {
         this.sourceId = sourceId;
         this.source = source;
         this.title = title;
         this.link = link;
         this.description = description;
+        this.keyword = keyword;
         this.publishedAt = publishedAt;
         this.collectedAt = collectedAt;
     }

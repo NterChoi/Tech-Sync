@@ -50,6 +50,13 @@ jwt:
   access-expiration: 1800000      # 30분
   refresh-expiration: 604800000   # 7일
 
+# ── Naver News API ───────────────────────────────────────────
+naver:
+  news:
+    client-id: ${NAVER_CLIENT_ID}
+    client-secret: ${NAVER_CLIENT_SECRET}
+    url: https://openapi.naver.com/v1/search/news.json
+
 # ── Logging ──────────────────────────────────────────────────
 logging:
   level:
