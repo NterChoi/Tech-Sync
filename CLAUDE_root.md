@@ -47,14 +47,20 @@ DB 중단:     docker compose down
 #### 브랜치 작업 순서
 1. ~~feature/news-keyword-master~~ 완료
 2. ~~feature/news-rss-collector~~ 완료
-3. `feature/news-naver-api` ← 다음 작업 (네이버 API 키 발급 필요)
-4. `feature/news-feed-api`
+3. ~~feature/news-naver-api~~ 완료
+4. `feature/news-keyword-subscribe` ← 다음 작업
+5. `feature/news-feed-api`
+
+#### 브랜치별 작업 범위
+| 브랜치 | 작업 내용 |
+|--------|-----------|
+| `feature/news-keyword-subscribe` | KEYWORD 엔티티 (USER_ID FK), 구독/해제 API (`/api/keywords`) |
+| `feature/news-feed-api` | 피드 조회 API (구독 키워드 + 긱뉴스 통합), 스크랩 API, ARTICLE에 IS_SCRAPED 필드 추가 |
 
 #### 다음 작업 시 할 것
-1. 네이버 뉴스 API 키 발급 확인
-2. `git pull origin develop`
-3. `git checkout -b feature/news-naver-api`
-4. 네이버 API 수집기 구현 시작
+1. `git checkout develop && git pull origin develop`
+2. `git checkout -b feature/news-keyword-subscribe`
+3. KEYWORD 엔티티 구현 시작
 
 ---
 
