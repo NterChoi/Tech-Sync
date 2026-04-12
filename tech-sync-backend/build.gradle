@@ -62,6 +62,9 @@ dependencies {
     // dotenv
     implementation 'me.paulschwarz:spring-dotenv:4.0.0'
 
+    // RSS Parser
+    implementation 'com.rometools:rome:2.1.0'
+
     // Test
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
