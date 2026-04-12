@@ -32,9 +32,11 @@ DB 중단:     docker compose down
 ## 이어받기 메모
 
 ### 2026-04-12 현재 상태
-- 현재 브랜치: `develop` (feature/news-rss-collector PR → develop merge 완료)
+- 현재 브랜치: `develop`
 - `feature/news-keyword-master` PR → develop merge 완료
 - `feature/news-rss-collector` PR → develop merge 완료
+- `feature/news-naver-api` PR → develop merge 완료
+- `feature/news-keyword-subscribe` PR → develop merge 완료
 
 #### 뉴스 피드 설계 결정사항
 - 소스 1: 긱뉴스 RSS (`feeds.feedburner.com/geeknews-feed`) — 전체 저장, 공통 피드
@@ -48,8 +50,8 @@ DB 중단:     docker compose down
 1. ~~feature/news-keyword-master~~ 완료
 2. ~~feature/news-rss-collector~~ 완료
 3. ~~feature/news-naver-api~~ 완료
-4. `feature/news-keyword-subscribe` ← 다음 작업
-5. `feature/news-feed-api`
+4. ~~feature/news-keyword-subscribe~~ 완료
+5. `feature/news-feed-api` ← 다음 작업
 
 #### 브랜치별 작업 범위
 | 브랜치 | 작업 내용 |
@@ -59,8 +61,8 @@ DB 중단:     docker compose down
 
 #### 다음 작업 시 할 것
 1. `git checkout develop && git pull origin develop`
-2. `git checkout -b feature/news-keyword-subscribe`
-3. KEYWORD 엔티티 구현 시작
+2. `git checkout -b feature/news-feed-api`
+3. 피드 조회 API 구현 시작 (구독 키워드 기반 NAVER + GEEK 통합, 스크랩 API, ARTICLE IS_SCRAPED 필드 추가)
 
 ---
 
