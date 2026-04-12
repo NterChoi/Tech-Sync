@@ -31,6 +31,11 @@ DB 중단:     docker compose down
 
 ## 이어받기 메모
 
+### 다음 세션 환경
+- OS: **Windows** → `gradlew.bat` 사용, 경로 구분자 `\`
+- WSL 환경이면 Mac과 동일하게 `./gradlew` 사용 가능
+- CLAUDE.local.md 새로 생성 필요 (Windows 환경 맞게 작성)
+
 ### 2026-04-12 현재 상태
 - 현재 브랜치: `develop`
 - `feature/news-keyword-master` PR → develop merge 완료
