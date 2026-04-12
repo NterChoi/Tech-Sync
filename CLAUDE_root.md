@@ -31,9 +31,10 @@ DB 중단:     docker compose down
 
 ## 이어받기 메모
 
-### 2026-04-09 현재 상태
-- 현재 브랜치: `feature/news-rss-collector` (develop에서 분기)
+### 2026-04-12 현재 상태
+- 현재 브랜치: `develop` (feature/news-rss-collector PR → develop merge 완료)
 - `feature/news-keyword-master` PR → develop merge 완료
+- `feature/news-rss-collector` PR → develop merge 완료
 
 #### 뉴스 피드 설계 결정사항
 - 소스 1: 긱뉴스 RSS (`feeds.feedburner.com/geeknews-feed`) — 전체 저장, 공통 피드
@@ -45,15 +46,15 @@ DB 중단:     docker compose down
 
 #### 브랜치 작업 순서
 1. ~~feature/news-keyword-master~~ 완료
-2. `feature/news-rss-collector` ← 다음 작업
-3. `feature/news-naver-api` (네이버 API 키 발급 필요)
+2. ~~feature/news-rss-collector~~ 완료
+3. `feature/news-naver-api` ← 다음 작업 (네이버 API 키 발급 필요)
 4. `feature/news-feed-api`
 
 #### 다음 작업 시 할 것
-1. `git pull origin develop`
-2. `git checkout feature/news-rss-collector`
-3. `build.gradle`에 rome 라이브러리 추가 (`com.rometools:rome:2.1.0`)
-4. RSS 수집기 구현 시작
+1. 네이버 뉴스 API 키 발급 확인
+2. `git pull origin develop`
+3. `git checkout -b feature/news-naver-api`
+4. 네이버 API 수집기 구현 시작
 
 ---
 
