@@ -8,9 +8,9 @@
 
 ## 현재 상태
 
-- 마지막 업데이트: 2026-04-14
-- 현재 브랜치: `develop`
-- 다음 작업: 협업 워크스페이스 단계 진입 (Phase 2)
+- 마지막 업데이트: 2026-04-20
+- 현재 브랜치: `feature/workspace-crud`
+- 다음 작업: WebSocket 공동 편집 기능 구현 (DELTA_LOG + OT)
 
 ---
 
@@ -68,6 +68,45 @@
 - 스크랩 목록이 비면 MongoDB 쿼리 없이 즉시 빈 페이지 반환
 - 키워드 방식: 관리자 제공 추천 키워드 선택 (자유 입력 X)
 
+### Phase 2: 협업 워크스페이스
+
+#### 2-1. feature/workspace-crud 🔧 (작업 중)
+- WORKSPACE 테이블 + WORKSPACE_MEMBER 테이블 (MariaDB)
+- 워크스페이스 CRUD API (생성/목록조회/상세조회/수정/삭제)
+- 멤버 관리 API (이메일 초대/제거/탈퇴)
+- 권한 체계: OWNER / EDITOR / VIEWER
+- OWNER만 수정/삭제/초대 가능, 본인 탈퇴 허용
+- ID 참조 방식 (User Entity 변경 없음, 기존 패턴 유지)
+
+**구현 파일:**
+
+| 파일 | 내용 |
+|------|------|
+| `domain/Workspace.java` | WORKSPACE 엔티티 (이름, 소유자ID, Auditing) |
+| `domain/WorkspaceMember.java` | WORKSPACE_MEMBER 엔티티 (WORKSPACE_ID+USER_ID 복합 unique) |
+| `repository/WorkspaceRepository.java` | JPA Repository |
+| `repository/WorkspaceMemberRepository.java` | JPA Repository (멤버 조회/존재 확인 쿼리) |
+| `dto/WorkspaceRequest.java` | 생성/수정 요청 DTO |
+| `dto/MemberInviteRequest.java` | 멤버 초대 요청 DTO (이메일 + 역할) |
+| `dto/WorkspaceResponse.java` | 워크스페이스 응답 DTO |
+| `dto/WorkspaceDetailResponse.java` | 상세 응답 DTO (멤버 목록 포함) |
+| `dto/MemberResponse.java` | 멤버 응답 DTO |
+| `service/WorkspaceService.java` | 인터페이스 |
+| `service/WorkspaceServiceImpl.java` | 비즈니스 로직 (권한 검증 포함) |
+| `controller/WorkspaceController.java` | REST Controller (7개 엔드포인트) |
+
+**API 엔드포인트:**
+
+| Method | URL | 설명 |
+|--------|-----|------|
+| POST | `/api/workspaces` | 워크스페이스 생성 (OWNER 자동 등록) |
+| GET | `/api/workspaces` | 내 워크스페이스 목록 |
+| GET | `/api/workspaces/{id}` | 상세 조회 (멤버 목록 포함) |
+| PUT | `/api/workspaces/{id}` | 이름 수정 (OWNER만) |
+| DELETE | `/api/workspaces/{id}` | 삭제 (OWNER만) |
+| POST | `/api/workspaces/{id}/members` | 멤버 초대 (OWNER만) |
+| DELETE | `/api/workspaces/{id}/members/{userId}` | 멤버 제거/탈퇴 |
+
 ### Phase 0: 인프라 & 인증 ✅
 - Spring Boot 3.x 프로젝트 초기 설정
 - Docker Compose (MariaDB, MongoDB, Redis)
@@ -82,12 +121,12 @@
 
 ## 진행 예정 작업
 
-### Phase 2: 협업 워크스페이스 (WBS 예정: 5/12~)
-- [ ] 워크스페이스 CRUD (WORKSPACE, WORKSPACE_MEMBER)
-- [ ] Quill.js 에디터 연동
+### Phase 2: 협업 워크스페이스
+- [x] 워크스페이스 CRUD (WORKSPACE, WORKSPACE_MEMBER) — 2026-04-20 완료
 - [ ] WebSocket 공동 편집 (DELTA_LOG + OT 연산)
 - [ ] DRAFT_SNAPSHOT 자동저장 (30초)
 - [ ] DRAFT_VERSION 수동 저장
+- [ ] Quill.js 에디터 연동 (프론트엔드)
 
 ### Phase 3: 알림 시스템
 - [ ] Redis Pub/Sub 이벤트 발행
