@@ -24,7 +24,7 @@ document.querySelector('.ql-editor').innerText = '...';
 const client = new Client({
   brokerURL: `ws://${host}/ws`,
   onConnect: () => {
-    client.subscribe(`/topic/room/${roomId}`, onDeltaReceived);
+    client.subscribe(`/topic/workspace/${workspaceId}/edit`, onDeltaReceived);
   },
   // 재연결 설정 — 네트워크 끊김 시 자동 복구
   reconnectDelay: 5000,

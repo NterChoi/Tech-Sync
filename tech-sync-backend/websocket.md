@@ -21,7 +21,7 @@ paths:
 3. 서버가 seqNo 10~12 사이의 DELTA_LOG를 조회
 4. OT 변환: 클라이언트 A의 Delta를 서버 기준으로 변환
 5. 변환된 Delta를 DELTA_LOG에 저장 (seqNo=13)
-6. /topic/room/{roomId}로 변환된 Delta 브로드캐스트
+6. /topic/workspace/{workspaceId}/edit로 변환된 Delta 브로드캐스트
 ```
 
 ### 3명 이상 동시 편집 시
@@ -32,10 +32,10 @@ paths:
 ## STOMP 메시지 페이로드 최소화
 ```json
  // ✅ 올바른 예 — Delta만 전송
-{ "roomId": "...", "delta": {...}, "seqNo": 42, "userId": "..." }
+{ "workspaceId": 1, "delta": {...}, "seqNo": 42, "userId": 1 }
 
 // ❌ 금지 — 전체 문서 내용 전송 (대역폭 낭비 + 충돌 해결 불가)
-{ "roomId": "...", "fullContent": "..." }
+{ "workspaceId": 1, "fullContent": "..." }
 ```
 
 ### 페이로드 최대 크기
@@ -44,7 +44,7 @@ paths:
 
 ## 자동저장 로직
 - 30초마다 `DRAFT_SNAPSHOT`을 upsert (insert or replace)
-- upsert 키: `ROOM_ID` (단일 문서만 유지)
+- upsert 키: `WORKSPACE_ID` (단일 문서만 유지)
 - 수동 저장 시에만 `DRAFT_VERSION` 신규 생성
 - 이유: 자동저장은 작업 손실 방지 목적이므로 버전을 생성하지 않음. 버전 히스토리 오염 방지
 

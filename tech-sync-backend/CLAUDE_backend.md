@@ -86,9 +86,10 @@ throw new BusinessException("이미 존재하는 데이터입니다.", HttpStatu
 
 ## WebSocket 경로 규칙
 ```
-/app/edit/{roomId}       → 클라이언트 → 서버 (편집 Delta 전송)
-/app/chat/{roomId}       → 클라이언트 → 서버 (채팅 메시지)
-/topic/room/{roomId}     → 서버 → 전체 구독자 브로드캐스트
+/app/edit/{workspaceId}            → 클라이언트 → 서버 (편집 Delta 전송)
+/app/chat/{workspaceId}            → 클라이언트 → 서버 (채팅 메시지)
+/topic/workspace/{workspaceId}/edit → 서버 → 전체 구독자 브로드캐스트 (편집)
+/topic/workspace/{workspaceId}/chat → 서버 → 전체 구독자 브로드캐스트 (채팅)
 /queue/user/{userId}     → 서버 → 특정 사용자 1:1
 ```
 
