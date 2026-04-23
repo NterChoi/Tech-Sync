@@ -9,8 +9,8 @@
 ## 현재 상태
 
 - 마지막 업데이트: 2026-04-23
-- 현재 브랜치: `feature/workspace-crud` (PR 생성, 머지 대기)
-- 다음 작업: WebSocket 공동 편집 기능 구현 (DELTA_LOG + OT)
+- 현재 브랜치: `develop`
+- 다음 작업: WebSocket 공동 편집 기능 구현 (DELTA_LOG + OT) — `feature/websocket-collab`
 
 ---
 
@@ -70,7 +70,7 @@
 
 ### Phase 2: 협업 워크스페이스
 
-#### 2-1. feature/workspace-crud ✅ (PR 생성 완료, 머지 대기)
+#### 2-1. feature/workspace-crud ✅ (→ develop merge 완료, PR #6)
 - WORKSPACE 테이블 + WORKSPACE_MEMBER 테이블 (MariaDB)
 - 워크스페이스 CRUD API (생성/목록조회/상세조회/수정/삭제)
 - 멤버 관리 API (이메일 초대/제거/탈퇴)
