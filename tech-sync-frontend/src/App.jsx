@@ -3,6 +3,8 @@ import { Box, Typography } from '@mui/material';
 import { AuthProvider } from './store/AuthContext';
 import ProtectedRoute from './routes/ProtectedRoute';
 import Layout from './components/Layout';
+import LoginPage from './pages/LoginPage';
+import SignupPage from './pages/SignupPage';
 
 function Placeholder({ name }) {
   return (
@@ -17,8 +19,8 @@ export default function App() {
   return (
     <AuthProvider>
       <Routes>
-        <Route path="/login" element={<Placeholder name="로그인" />} />
-        <Route path="/signup" element={<Placeholder name="회원가입" />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignupPage />} />
         <Route
           element={
             <ProtectedRoute>
