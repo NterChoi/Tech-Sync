@@ -16,7 +16,7 @@
 | ARTICLE         | 뉴스 기사 + 스크랩·메모 | ARTICLE_ID, USER_ID, KEYWORD, IS_SCRAPED |
 | DRAFT_SNAPSHOT  | 30초 자동저장 (단일 문서 upsert) | WORKSPACE_ID(PK), CONTENT, LAST_EDITOR_ID |
 | DRAFT_VERSION   | 수동 저장 체크포인트 | VERSION_ID, WORKSPACE_ID, VERSION_NO, VERSION_TYPE(MAJOR/MINOR) |
-| DELTA_LOG       | OT 충돌 해결의 핵심 — 편집 최소 단위 | WORKSPACE_ID, OP_TYPE, POSITION, CONTENT, SEQ_NO |
+| DELTA_LOG       | OT 충돌 해결의 핵심 — Quill Delta(ops 배열) 단위 append-only 로그 | WORKSPACE_ID, SEQ_NO, USER_ID, OPS(List\<retain/insert/delete\>), CREATED_AT |
 
 ## 실시간 플로우
 ```
