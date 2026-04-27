@@ -1,5 +1,8 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Box, Typography } from '@mui/material';
+import { AuthProvider } from './store/AuthContext';
+import ProtectedRoute from './routes/ProtectedRoute';
+import Layout from './components/Layout';
 
 function Placeholder({ name }) {
   return (
@@ -12,10 +15,25 @@ function Placeholder({ name }) {
 
 export default function App() {
   return (
-    <Routes>
-      <Route path="/" element={<Navigate to="/login" replace />} />
-      <Route path="/login" element={<Placeholder name="로그인" />} />
-      <Route path="*" element={<Placeholder name="404" />} />
-    </Routes>
+    <AuthProvider>
+      <Routes>
+        <Route path="/login" element={<Placeholder name="로그인" />} />
+        <Route path="/signup" element={<Placeholder name="회원가입" />} />
+        <Route
+          element={
+            <ProtectedRoute>
+              <Layout />
+            </ProtectedRoute>
+          }
+        >
+          <Route path="/" element={<Navigate to="/feed" replace />} />
+          <Route path="/feed" element={<Placeholder name="뉴스 피드" />} />
+          <Route path="/scraps" element={<Placeholder name="내 스크랩" />} />
+          <Route path="/workspaces" element={<Placeholder name="워크스페이스" />} />
+          <Route path="/workspaces/:id" element={<Placeholder name="워크스페이스 상세" />} />
+        </Route>
+        <Route path="*" element={<Placeholder name="404" />} />
+      </Routes>
+    </AuthProvider>
   );
 }
