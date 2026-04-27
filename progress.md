@@ -8,9 +8,9 @@
 
 ## 현재 상태
 
-- 마지막 업데이트: 2026-04-23
+- 마지막 업데이트: 2026-04-27
 - 현재 브랜치: `develop`
-- 다음 작업: WebSocket 공동 편집 기능 구현 (DELTA_LOG + OT) — `feature/websocket-collab`
+- 다음 작업: 2-2b WebSocket OT 변환 알고리즘 — `feature/websocket-ot`
 
 ---
 
@@ -109,6 +109,35 @@
 | POST | `/api/workspaces/{id}/members` | 멤버 초대 (OWNER만) |
 | DELETE | `/api/workspaces/{id}/members/{userId}` | 멤버 제거/탈퇴 |
 
+#### 2-2a. feature/websocket-infra ✅ (→ develop merge 완료, PR #7)
+- WebSocket(STOMP) 기반 Quill Delta 메시지 처리 인프라
+- DELTA_LOG MongoDB 컬렉션 + (workspaceId, seqNo) 복합 unique 인덱스
+- STOMP CONNECT 프레임 JWT 검증 (Authorization Bearer 헤더)
+- 워크스페이스 멤버 검증 (비-멤버 편집 403 차단)
+- seqNo 채번: Redis INCR `delta:seq:{workspaceId}`
+- 브로드캐스트: `/topic/workspace/{workspaceId}/edit`
+- 서비스 단위 테스트 4개 (정상 2 + 실패 2)
+- ROOM_ID → WORKSPACE_ID 용어 통일 (문서 4개)
+
+**구현 파일:**
+
+| 파일 | 내용 |
+|------|------|
+| `domain/DeltaLog.java` | MongoDB Document — workspaceId, seqNo, userId, ops, createdAt |
+| `repository/DeltaLogRepository.java` | MongoRepository + seqNo 범위 조회 |
+| `dto/DeltaMessage.java` | 클라이언트 수신 페이로드 (ops + clientSeqNo) |
+| `dto/DeltaBroadcast.java` | 서버 브로드캐스트 페이로드 |
+| `service/EditorService.java` / `EditorServiceImpl.java` | 멤버 검증 + seqNo 채번 + 저장 + 브로드캐스트 |
+| `controller/EditorWebSocketController.java` | `@MessageMapping("/edit/{workspaceId}")` |
+| `config/StompAuthChannelInterceptor.java` | CONNECT 프레임 JWT 검증 인터셉터 |
+| `config/WebSocketConfig.java` | inbound channel 인터셉터 등록 (수정) |
+| `test/service/EditorServiceImplTest.java` | 단위 테스트 (4개, Mockito) |
+
+**설계 결정:**
+- seqNo는 Delta(ops 배열) 단위로 증가 — Quill-delta OT 연산 단위와 일치
+- 인증: STOMP CONNECT 프레임의 native Authorization Bearer 헤더 (업계 관례)
+- ROOM_ID 표기를 WORKSPACE_ID로 통일하여 Workspace 엔티티와 일관성 확보
+
 ### Phase 0: 인프라 & 인증 ✅
 - Spring Boot 3.x 프로젝트 초기 설정
 - Docker Compose (MariaDB, MongoDB, Redis)
@@ -124,10 +153,11 @@
 ## 진행 예정 작업
 
 ### Phase 2: 협업 워크스페이스
-- [x] 워크스페이스 CRUD (WORKSPACE, WORKSPACE_MEMBER) — 2026-04-20 완료, 2026-04-23 테스트 추가
-- [ ] WebSocket 공동 편집 (DELTA_LOG + OT 연산)
-- [ ] DRAFT_SNAPSHOT 자동저장 (30초)
-- [ ] DRAFT_VERSION 수동 저장
+- [x] 2-1. 워크스페이스 CRUD (WORKSPACE, WORKSPACE_MEMBER) — 2026-04-20 완료, 2026-04-23 테스트 추가, PR #6
+- [x] 2-2a. WebSocket 편집 인프라 (DELTA_LOG + STOMP 인증) — 2026-04-27 완료, PR #7
+- [ ] 2-2b. OT 변환 알고리즘 (clientSeqNo 불일치 시 변환)
+- [ ] 2-2c. DRAFT_SNAPSHOT 자동저장 (30초)
+- [ ] 2-2d. DRAFT_VERSION 수동 저장
 - [ ] Quill.js 에디터 연동 (프론트엔드)
 
 ### Phase 3: 알림 시스템
@@ -151,6 +181,9 @@
 | 2026-04-13 | 스크랩을 ARTICLE이 아닌 별도 SCRAP 테이블로 분리 | per-user 데이터를 MongoDB 문서에 넣으면 문서 비대화 + 동시성 문제 |
 | 2026-04-13 | 키워드를 자유 입력이 아닌 추천 선택 방식으로 | 검색 품질 일관성 + 관리 용이성 |
 | 2026-04-13 | 긱뉴스는 전체 저장, 네이버는 구독 키워드 기반 | 긱뉴스는 IT 전문이라 전체가 유의미, 네이버는 범위가 넓어 필터링 필요 |
+| 2026-04-27 | 편집방 식별자를 ROOM_ID가 아닌 WORKSPACE_ID로 통일 | Workspace 엔티티와 용어 일치, 별도 ROOM 개념 도입은 YAGNI |
+| 2026-04-27 | seqNo는 Delta(ops 배열) 단위로 채번 | Quill-delta 라이브러리의 OT 연산 단위와 일치, 단일 op 분할 저장은 비효율 |
+| 2026-04-27 | STOMP 인증을 CONNECT 프레임 Authorization 헤더로 처리 | 업계 관례, 핸드셰이크 단계에서 차단하여 비인증 메시지 발행 방지 |
 
 ---
 
