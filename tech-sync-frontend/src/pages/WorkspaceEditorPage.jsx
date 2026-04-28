@@ -55,8 +55,10 @@ export default function WorkspaceEditorPage() {
   }, [wsId]);
 
   useEffect(() => {
-    if (!editorContainerRef.current || quillRef.current) return;
-    const quill = new Quill(editorContainerRef.current, {
+    if (!ws) return undefined;
+    const container = editorContainerRef.current;
+    if (!container || quillRef.current) return undefined;
+    const quill = new Quill(container, {
       theme: 'snow',
       placeholder: '함께 편집해보세요...',
       modules: {
@@ -70,7 +72,13 @@ export default function WorkspaceEditorPage() {
       },
     });
     quillRef.current = quill;
-  }, []);
+    return () => {
+      // StrictMode 두 번 마운트 / 언마운트 대비: toolbar+container 모두 제거
+      const wrapper = container.parentElement;
+      if (wrapper) wrapper.innerHTML = '';
+      quillRef.current = null;
+    };
+  }, [ws]);
 
   const handleRemoteDelta = useCallback((broadcast) => {
     if (!quillRef.current) return;
@@ -93,7 +101,7 @@ export default function WorkspaceEditorPage() {
     };
     quill.on('text-change', handler);
     return () => quill.off('text-change', handler);
-  }, [sendDelta, seqNo]);
+  }, [sendDelta, seqNo, ws]);
 
   if (loading) {
     return (
@@ -146,12 +154,13 @@ export default function WorkspaceEditorPage() {
         </Alert>
       )}
       <Box
-        ref={editorContainerRef}
         sx={{
           backgroundColor: 'background.paper',
           '& .ql-container': { minHeight: 400, fontSize: 16 },
         }}
-      />
+      >
+        <Box ref={editorContainerRef} />
+      </Box>
     </Box>
   );
 }
