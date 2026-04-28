@@ -5,6 +5,8 @@ import ProtectedRoute from './routes/ProtectedRoute';
 import Layout from './components/Layout';
 import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
+import FeedPage from './pages/FeedPage';
+import ScrapsPage from './pages/ScrapsPage';
 
 function Placeholder({ name }) {
   return (
@@ -29,8 +31,8 @@ export default function App() {
           }
         >
           <Route path="/" element={<Navigate to="/feed" replace />} />
-          <Route path="/feed" element={<Placeholder name="뉴스 피드" />} />
-          <Route path="/scraps" element={<Placeholder name="내 스크랩" />} />
+          <Route path="/feed" element={<FeedPage />} />
+          <Route path="/scraps" element={<ScrapsPage />} />
           <Route path="/workspaces" element={<Placeholder name="워크스페이스" />} />
           <Route path="/workspaces/:id" element={<Placeholder name="워크스페이스 상세" />} />
         </Route>
