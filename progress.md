@@ -8,9 +8,10 @@
 
 ## 현재 상태
 
-- 마지막 업데이트: 2026-04-27
-- 현재 브랜치: `develop`
-- 다음 작업: 2-2b WebSocket OT 변환 알고리즘 — `feature/websocket-ot`
+- 마지막 업데이트: 2026-04-28
+- 현재 브랜치: `develop` (`hotfix/frontend-mvp-fixes` PR 머지 대기)
+- 다음 작업: 발표(4/30) 대비 — Quill 한글 IME composition 이슈 해결, hotfix PR 머지
+- 발표 후 작업: 2-2b WebSocket OT 변환 알고리즘 — `feature/websocket-ot`
 
 ---
 
@@ -138,6 +139,36 @@
 - 인증: STOMP CONNECT 프레임의 native Authorization Bearer 헤더 (업계 관례)
 - ROOM_ID 표기를 WORKSPACE_ID로 통일하여 Workspace 엔티티와 일관성 확보
 
+### Phase 4: 프론트엔드 MVP (발표용)
+
+#### 4-1. feature/frontend-mvp ✅ (→ develop merge 완료, PR #8)
+- 4/30 개발 중간 발표를 위한 발표용 프론트엔드 MVP
+- 스택: **Vite + React 18 + MUI 5** + react-router-dom + axios + @stomp/stompjs + sockjs-client + quill
+- 전체 시연 시나리오 동작 검증 완료
+
+**구현 파일 (신규 25개):**
+
+| 카테고리 | 파일 |
+|----------|------|
+| 셋업 | `package.json`, `vite.config.js`(8080 프록시), `index.html`, `src/main.jsx`, `src/theme.js`, `src/index.css` |
+| API 클라이언트 | `src/api/axios.js` (JWT 인터셉터 + 자동 refresh), `auth.js`, `feed.js`, `keywords.js`, `workspaces.js` |
+| 인증/라우팅 | `src/store/AuthContext.jsx`, `src/routes/ProtectedRoute.jsx` |
+| 레이아웃/공통 | `src/components/Layout.jsx`(AppBar+Drawer), `ArticleCard.jsx` |
+| 페이지 | `LoginPage`, `SignupPage`(자동 로그인), `FeedPage`(페이지네이션), `ScrapsPage`, `WorkspacesPage`, `WorkspaceDetailPage`(멤버 관리), `WorkspaceEditorPage`(Quill+STOMP) |
+| 훅 | `src/hooks/useEditorSocket.js` (SockJS+STOMP, native Authorization 헤더) |
+
+**시연 검증 완료 (2026-04-28):**
+- ✅ 회원가입 → 자동 로그인 → /feed 이동
+- ✅ 뉴스 피드 카드 표시 + 스크랩 토글 + 내 스크랩 목록
+- ✅ 워크스페이스 생성/멤버 초대(이메일+역할)/탈퇴
+- ✅ **실시간 공동 편집** — 한쪽 입력 → 다른 브라우저(시크릿 창) 즉시 반영
+
+**발견된 이슈:**
+- ⚠️ **한글 IME 마지막 글자 누락**: "라면" 입력 시 다른 세션에는 "라며"로 보임 — composition end 시점 처리 미흡 (해결 예정)
+- 🔧 **hotfix/frontend-mvp-fixes** (PR 생성, 머지 대기)
+  - WorkspaceEditorPage Quill 마운트 시점 보정 (loading 단계에서 ref 미부착으로 빈 페이지였음)
+  - axios 인터셉터에 403도 토큰 만료로 처리 (Spring Security stateless에서 401 대신 403 반환)
+
 ### Phase 0: 인프라 & 인증 ✅
 - Spring Boot 3.x 프로젝트 초기 설정
 - Docker Compose (MariaDB, MongoDB, Redis)
@@ -165,12 +196,15 @@
 - [ ] SSE 실시간 알림 (/api/alarm/subscribe)
 - [ ] Web Push (VAPID) — 브라우저 미연결 시
 
-### Phase 4: 프론트엔드
-- [ ] React 프로젝트 초기 설정
-- [ ] 로그인/회원가입 UI
-- [ ] 뉴스 피드 UI
-- [ ] 에디터 컴포넌트 (Quill.js)
-- [ ] useSocket.js, useSSE.js 훅
+### Phase 4: 프론트엔드 MVP (발표용 — 4/30 발표)
+- [x] React 프로젝트 초기 설정 (Vite + MUI) — 2026-04-27, PR #8
+- [x] 로그인/회원가입 UI — PR #8
+- [x] 뉴스 피드 UI + 스크랩 — PR #8
+- [x] 워크스페이스 목록/상세/멤버 — PR #8
+- [x] 에디터 컴포넌트 (Quill.js + STOMP) — PR #8 + hotfix
+- [ ] 한글 IME composition 이슈 해결 (마지막 글자 누락)
+- [ ] 키워드 구독 페이지 (NAVER 뉴스 데모용, nice-to-have)
+- [ ] useSSE.js 훅 (Phase 3 알림 시스템 진행 시)
 
 ---
 
@@ -184,6 +218,10 @@
 | 2026-04-27 | 편집방 식별자를 ROOM_ID가 아닌 WORKSPACE_ID로 통일 | Workspace 엔티티와 용어 일치, 별도 ROOM 개념 도입은 YAGNI |
 | 2026-04-27 | seqNo는 Delta(ops 배열) 단위로 채번 | Quill-delta 라이브러리의 OT 연산 단위와 일치, 단일 op 분할 저장은 비효율 |
 | 2026-04-27 | STOMP 인증을 CONNECT 프레임 Authorization 헤더로 처리 | 업계 관례, 핸드셰이크 단계에서 차단하여 비인증 메시지 발행 방지 |
+| 2026-04-27 | 발표용 프론트는 Vite + MUI로 (CRA/Tailwind 기각) | CRA deprecated, MUI는 3일 안에 깔끔한 화면 뽑기 가장 빠름 |
+| 2026-04-27 | 토큰은 localStorage 저장 + axios 인터셉터로 자동 첨부 | 발표 데모 환경에서 XSS 위험은 비현실적, 단순함 우선 |
+| 2026-04-27 | 백엔드 통신은 Vite proxy로 8080 우회 | CORS 설정 회피, dev 환경 단순화 |
+| 2026-04-28 | axios 인터셉터에서 401뿐 아니라 403도 토큰 만료로 처리 | Spring Security stateless+JWT 환경에서 401 대신 403을 자주 던짐, _retry 플래그로 무한 루프 방지 |
 
 ---
 
