@@ -45,7 +45,9 @@ api.interceptors.response.use(
     const original = error.config;
     const status = error.response?.status;
 
-    if (status === 401 && original && !original._retry) {
+    // Spring Security stateless 환경에서 만료/누락 토큰을 401 또는 403으로 던지는
+    // 케이스를 모두 토큰 만료 후보로 간주하고 1회만 refresh를 시도한다.
+    if ((status === 401 || status === 403) && original && !original._retry) {
       const refreshToken = tokenStore.getRefresh();
       if (!refreshToken) {
         clearAndRedirect();
