@@ -7,6 +7,8 @@ import LoginPage from './pages/LoginPage';
 import SignupPage from './pages/SignupPage';
 import FeedPage from './pages/FeedPage';
 import ScrapsPage from './pages/ScrapsPage';
+import WorkspacesPage from './pages/WorkspacesPage';
+import WorkspaceDetailPage from './pages/WorkspaceDetailPage';
 
 function Placeholder({ name }) {
   return (
@@ -33,8 +35,8 @@ export default function App() {
           <Route path="/" element={<Navigate to="/feed" replace />} />
           <Route path="/feed" element={<FeedPage />} />
           <Route path="/scraps" element={<ScrapsPage />} />
-          <Route path="/workspaces" element={<Placeholder name="워크스페이스" />} />
-          <Route path="/workspaces/:id" element={<Placeholder name="워크스페이스 상세" />} />
+          <Route path="/workspaces" element={<WorkspacesPage />} />
+          <Route path="/workspaces/:id" element={<WorkspaceDetailPage />} />
         </Route>
         <Route path="*" element={<Placeholder name="404" />} />
       </Routes>
