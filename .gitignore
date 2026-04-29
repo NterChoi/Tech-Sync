@@ -8,6 +8,9 @@ application-local.yml
 CLAUDE.local.md
 .claude/settings.local.json
 
+# ── 발표/개인 노트 ───────────────────────────────────────────
+presentation-notes.md
+
 # ── Gradle ───────────────────────────────────────────────────
 .gradle/
 build/
