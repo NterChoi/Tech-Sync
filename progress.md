@@ -8,10 +8,10 @@
 
 ## 현재 상태
 
-- 마지막 업데이트: 2026-04-29
-- 현재 브랜치: `develop` (발표용 MVP 안정 상태, hotfix PR #9까지 머지 완료)
-- 발표(4/30) 진행 가능 상태 — 안정성 우선으로 추가 변경은 발표 후로 미룸
-- 발표 후 작업: 2-2b WebSocket OT 변환, 한글 IME composition 처리, 커서 공유
+- 마지막 업데이트: 2026-05-11
+- 현재 브랜치: `feature/frontend-ime-composition` (한글 IME 글자 누락 패치)
+- 4/30 발표 완료. 5/28 3차 발표 대비 협업 워크스페이스 완성도 작업 진행 중
+- 다음 작업: 커서 공유 (quill-cursors + STOMP `/cursor`) → 2-2b OT 변환 → 자동저장
 
 ---
 
@@ -168,8 +168,14 @@
 - axios 인터셉터에 403도 토큰 만료로 처리 (Spring Security stateless에서 401 대신 403 반환)
 
 **발표 후로 미룬 항목 (의도적 deferred):**
-- **한글 IME 마지막 글자 누락**: "라면" 입력 시 다른 세션에 "라며"로 보임. compositionend 시점에 quill.getContents() diff를 한 번 더 발사하는 패치까지 설계 완료. 발표 D-1 안정성 우선으로 미적용. 시연은 단어 끝 스페이스/엔터로 회피.
 - **커서 공유 (cursor presence)**: Google Docs 스타일 — 다른 사용자의 커서 위치/선택영역이 보이도록. quill-cursors 모듈 + 새 STOMP destination(`/app/cursor/{id}`, `/topic/workspace/{id}/cursor`) 필요. 백엔드/프론트 양쪽 작업이라 발표 후 별도 PR.
+
+#### 4-2. feature/frontend-ime-composition ✅ (2026-05-11, 5/28 발표 대비)
+- 한글 IME composition 중 글자 누락 문제 해결 (구글 독스 식 실시간 동기화)
+- Quill 2가 composition 중 contents 업데이트를 차단하는 동작을 우회
+- compositionstart ~ compositionend 사이 50ms 폴링으로 `quill.root.innerText`에서 직접 텍스트 추출 → Delta로 변환 → diff 송신
+- compositionend 후엔 Quill 정식 처리에 맡겨 attributes(bold/italic 등) 복원
+- 시연 검증: "아"만 입력해도 다른 브라우저에 즉시 표시, "안녕하세요 반갑습니다" 마지막 글자까지 정상 송신
 
 ### Phase 0: 인프라 & 인증 ✅
 - Spring Boot 3.x 프로젝트 초기 설정
@@ -204,8 +210,8 @@
 - [x] 뉴스 피드 UI + 스크랩 — PR #8
 - [x] 워크스페이스 목록/상세/멤버 — PR #8
 - [x] 에디터 컴포넌트 (Quill.js + STOMP) — PR #8 + hotfix
-- [ ] 한글 IME composition 이슈 해결 (compositionend 시점 diff 발사) — 발표 후
-- [ ] 커서 공유 (cursor presence, quill-cursors + STOMP `/cursor` destination) — 발표 후
+- [x] 한글 IME composition 이슈 해결 (50ms DOM 폴링 방식) — 2026-05-11, feature/frontend-ime-composition
+- [ ] 커서 공유 (cursor presence, quill-cursors + STOMP `/cursor` destination)
 - [ ] 키워드 구독 페이지 (NAVER 뉴스 데모용, nice-to-have)
 - [ ] useSSE.js 훅 (Phase 3 알림 시스템 진행 시)
 
