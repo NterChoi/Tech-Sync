@@ -1,6 +1,8 @@
 package com.techsync.service;
 
 import com.techsync.domain.DeltaLog;
+import com.techsync.dto.CursorBroadcast;
+import com.techsync.dto.CursorMessage;
 import com.techsync.dto.DeltaBroadcast;
 import com.techsync.dto.DeltaMessage;
 import com.techsync.exception.BusinessException;
@@ -157,5 +159,54 @@ class EditorServiceImplTest {
 
         verify(deltaLogRepository, never()).save(any(DeltaLog.class));
         verify(messagingTemplate, never()).convertAndSend(anyString(), (Object) any());
+    }
+
+    // ==================== 커서 브로드캐스트 ====================
+
+    @Test
+    @DisplayName("broadcastCursor: 멤버가 커서 위치 송신 시 DELTA_LOG/Redis 없이 /cursor 토픽 브로드캐스트")
+    void broadcastCursor_success() {
+        given(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, 100L)).willReturn(true);
+        CursorMessage cursorMsg = new CursorMessage(new CursorMessage.CursorRange(7, 3));
+
+        CursorBroadcast result = editorService.broadcastCursor(1L, 100L, cursorMsg);
+
+        assertThat(result.workspaceId()).isEqualTo(1L);
+        assertThat(result.userId()).isEqualTo(100L);
+        assertThat(result.range().index()).isEqualTo(7);
+        assertThat(result.range().length()).isEqualTo(3);
+
+        ArgumentCaptor<CursorBroadcast> captor = ArgumentCaptor.forClass(CursorBroadcast.class);
+        verify(messagingTemplate).convertAndSend(eq("/topic/workspace/1/cursor"), captor.capture());
+        assertThat(captor.getValue().userId()).isEqualTo(100L);
+
+        verify(deltaLogRepository, never()).save(any(DeltaLog.class));
+    }
+
+    @Test
+    @DisplayName("broadcastCursor: 비멤버 송신 시 403 FORBIDDEN, 브로드캐스트 발생하지 않음")
+    void broadcastCursor_notMember_forbidden() {
+        given(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, 100L)).willReturn(false);
+        CursorMessage cursorMsg = new CursorMessage(new CursorMessage.CursorRange(0, 0));
+
+        assertThatThrownBy(() -> editorService.broadcastCursor(1L, 100L, cursorMsg))
+                .isInstanceOf(BusinessException.class)
+                .extracting("status").isEqualTo(HttpStatus.FORBIDDEN);
+
+        verify(messagingTemplate, never()).convertAndSend(anyString(), (Object) any());
+    }
+
+    @Test
+    @DisplayName("broadcastCursor: 포커스 잃음(null range) 송신 시에도 정상 브로드캐스트")
+    void broadcastCursor_nullRange_blurSignal() {
+        given(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, 100L)).willReturn(true);
+        CursorMessage cursorMsg = new CursorMessage(null);
+
+        CursorBroadcast result = editorService.broadcastCursor(1L, 100L, cursorMsg);
+
+        assertThat(result.range()).isNull();
+        verify(messagingTemplate).convertAndSend(
+                eq("/topic/workspace/1/cursor"),
+                any(CursorBroadcast.class));
     }
 }

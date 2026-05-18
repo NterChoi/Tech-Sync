@@ -1,6 +1,8 @@
 package com.techsync.service;
 
 import com.techsync.domain.DeltaLog;
+import com.techsync.dto.CursorBroadcast;
+import com.techsync.dto.CursorMessage;
 import com.techsync.dto.DeltaBroadcast;
 import com.techsync.dto.DeltaMessage;
 import com.techsync.exception.BusinessException;
@@ -21,6 +23,7 @@ public class EditorServiceImpl implements EditorService {
     private static final String SEQ_KEY_PREFIX = "delta:seq:";
     private static final String EDIT_TOPIC_PREFIX = "/topic/workspace/";
     private static final String EDIT_TOPIC_SUFFIX = "/edit";
+    private static final String CURSOR_TOPIC_SUFFIX = "/cursor";
 
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final DeltaLogRepository deltaLogRepository;
@@ -49,6 +52,20 @@ public class EditorServiceImpl implements EditorService {
         DeltaBroadcast broadcast = DeltaBroadcast.of(log);
         messagingTemplate.convertAndSend(
                 EDIT_TOPIC_PREFIX + workspaceId + EDIT_TOPIC_SUFFIX,
+                broadcast);
+
+        return broadcast;
+    }
+
+    @Override
+    public CursorBroadcast broadcastCursor(Long workspaceId, Long userId, CursorMessage message) {
+        if (!workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspaceId, userId)) {
+            throw new BusinessException("워크스페이스 멤버가 아닙니다.", HttpStatus.FORBIDDEN);
+        }
+
+        CursorBroadcast broadcast = CursorBroadcast.of(workspaceId, userId, message);
+        messagingTemplate.convertAndSend(
+                EDIT_TOPIC_PREFIX + workspaceId + CURSOR_TOPIC_SUFFIX,
                 broadcast);
 
         return broadcast;

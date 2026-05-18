@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import {
   Alert,
@@ -11,12 +11,21 @@ import {
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Quill from 'quill';
+import QuillCursors from 'quill-cursors';
 import 'quill/dist/quill.snow.css';
-
-const Delta = Quill.import('delta');
 import { useAuth } from '../store/AuthContext';
 import * as wsApi from '../api/workspaces';
 import useEditorSocket from '../hooks/useEditorSocket';
+
+const Delta = Quill.import('delta');
+Quill.register('modules/cursors', QuillCursors);
+
+function userColor(userId) {
+  const hue = (Number(userId) * 137) % 360;
+  return `hsl(${hue}, 70%, 45%)`;
+}
+
+const CURSOR_THROTTLE_MS = 80;
 
 export default function WorkspaceEditorPage() {
   const { id } = useParams();
@@ -57,6 +66,15 @@ export default function WorkspaceEditorPage() {
     };
   }, [wsId]);
 
+  const memberNameById = useMemo(() => {
+    const map = new Map();
+    if (ws?.ownerId && ws?.ownerName) map.set(ws.ownerId, ws.ownerName);
+    ws?.members?.forEach((m) => {
+      if (m.userId && m.userName) map.set(m.userId, m.userName);
+    });
+    return map;
+  }, [ws]);
+
   useEffect(() => {
     if (!ws) return undefined;
     const container = editorContainerRef.current;
@@ -65,6 +83,7 @@ export default function WorkspaceEditorPage() {
       theme: 'snow',
       placeholder: '함께 편집해보세요...',
       modules: {
+        cursors: true,
         toolbar: [
           [{ header: [1, 2, 3, false] }],
           ['bold', 'italic', 'underline'],
@@ -77,7 +96,6 @@ export default function WorkspaceEditorPage() {
     quillRef.current = quill;
     lastSyncedRef.current = quill.getContents();
     return () => {
-      // StrictMode 두 번 마운트 / 언마운트 대비: toolbar+container 모두 제거
       const wrapper = container.parentElement;
       if (wrapper) wrapper.innerHTML = '';
       quillRef.current = null;
@@ -92,10 +110,29 @@ export default function WorkspaceEditorPage() {
     setSeqNo(broadcast.seqNo);
   }, []);
 
-  const { connected, error: socketError, sendDelta } = useEditorSocket({
+  const handleRemoteCursor = useCallback(
+    (broadcast) => {
+      const quill = quillRef.current;
+      if (!quill) return;
+      const cursors = quill.getModule('cursors');
+      if (!cursors) return;
+      const cursorId = String(broadcast.userId);
+      if (!broadcast.range) {
+        cursors.removeCursor(cursorId);
+        return;
+      }
+      const name = memberNameById.get(broadcast.userId) ?? `사용자${broadcast.userId}`;
+      cursors.createCursor(cursorId, name, userColor(broadcast.userId));
+      cursors.moveCursor(cursorId, broadcast.range);
+    },
+    [memberNameById],
+  );
+
+  const { connected, error: socketError, sendDelta, sendCursor } = useEditorSocket({
     workspaceId: wsId,
     currentUserId: user?.userId,
     onRemoteDelta: handleRemoteDelta,
+    onRemoteCursor: handleRemoteCursor,
   });
 
   useEffect(() => {
@@ -156,6 +193,34 @@ export default function WorkspaceEditorPage() {
       if (pollTimer) clearInterval(pollTimer);
     };
   }, [sendDelta, seqNo, ws]);
+
+  useEffect(() => {
+    const quill = quillRef.current;
+    if (!quill) return undefined;
+    let timer = null;
+    let pendingRange = null;
+    const flush = () => {
+      sendCursor(pendingRange);
+      timer = null;
+    };
+    const handler = (range, _old, source) => {
+      if (source !== 'user') return;
+      pendingRange = range;
+      if (timer) return;
+      timer = setTimeout(flush, CURSOR_THROTTLE_MS);
+    };
+    quill.on('selection-change', handler);
+    return () => {
+      quill.off('selection-change', handler);
+      if (timer) clearTimeout(timer);
+    };
+  }, [sendCursor, ws]);
+
+  useEffect(() => {
+    if (!connected) return;
+    const cursors = quillRef.current?.getModule('cursors');
+    cursors?.clearCursors();
+  }, [connected]);
 
   if (loading) {
     return (
