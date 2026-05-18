@@ -9,9 +9,16 @@
 ## 현재 상태
 
 - 마지막 업데이트: 2026-05-18
-- 현재 브랜치: `feature/cursor-presence` (커서 공유 구현 완료, 시연 검증 통과)
+- 현재 브랜치: `feature/cursor-presence` (커서 공유 커밋 `489e4f3` push 완료, develop으로 PR 대기)
 - 4/30 발표 완료. 5/28 3차 발표 대비 협업 워크스페이스 완성도 작업 진행 중
 - 다음 작업: 2-2b OT 변환 → DRAFT_SNAPSHOT 자동저장 → DRAFT_VERSION 수동 저장
+
+### 다음 세션 이어받기 메모 (2026-05-18 마무리 시점)
+- **cursor-presence PR**: https://github.com/NterChoi/Tech-Sync/compare/develop...feature/cursor-presence — 머지하고 시작
+- **OT 변환(2-2b) 진입 직전 중단**: 구현 위치 3안 비교까지 정리 (A: 서버 OT / B: 클라이언트 OT / C: 하이브리드). Java용 quill-delta 호환 라이브러리가 잘 알려진 게 없어 B(클라이언트 OT) 추천 분석 상태. **다음 세션은 위치 선택부터 시작**
+- **로컬 상태 주의**:
+  - 세션 시작 시 stash 보관한 `build.gradle`의 `// 스프링 3부터 확인 필요` 메모가 `stash@{0}`에 남아있음 (커서 작업과 무관, 필요 시 `git stash pop`)
+  - dev 서버(8080 백엔드 + 3000 프론트)는 이 세션 끝에 정리
 
 ---
 
