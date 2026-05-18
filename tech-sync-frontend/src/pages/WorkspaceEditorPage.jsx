@@ -12,6 +12,8 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import Quill from 'quill';
 import 'quill/dist/quill.snow.css';
+
+const Delta = Quill.import('delta');
 import { useAuth } from '../store/AuthContext';
 import * as wsApi from '../api/workspaces';
 import useEditorSocket from '../hooks/useEditorSocket';
@@ -24,6 +26,7 @@ export default function WorkspaceEditorPage() {
 
   const editorContainerRef = useRef(null);
   const quillRef = useRef(null);
+  const lastSyncedRef = useRef(null);
 
   const [ws, setWs] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -72,17 +75,20 @@ export default function WorkspaceEditorPage() {
       },
     });
     quillRef.current = quill;
+    lastSyncedRef.current = quill.getContents();
     return () => {
       // StrictMode 두 번 마운트 / 언마운트 대비: toolbar+container 모두 제거
       const wrapper = container.parentElement;
       if (wrapper) wrapper.innerHTML = '';
       quillRef.current = null;
+      lastSyncedRef.current = null;
     };
   }, [ws]);
 
   const handleRemoteDelta = useCallback((broadcast) => {
     if (!quillRef.current) return;
     quillRef.current.updateContents({ ops: broadcast.ops }, 'silent');
+    lastSyncedRef.current = quillRef.current.getContents();
     setSeqNo(broadcast.seqNo);
   }, []);
 
@@ -95,12 +101,60 @@ export default function WorkspaceEditorPage() {
   useEffect(() => {
     const quill = quillRef.current;
     if (!quill) return undefined;
-    const handler = (delta, _oldDelta, source) => {
-      if (source !== 'user') return;
-      sendDelta(delta.ops, seqNo);
+
+    // composition 외부: Quill contents 정상 사용 (attributes 보존)
+    const sendPendingDiff = () => {
+      if (!quillRef.current || !lastSyncedRef.current) return;
+      const current = quillRef.current.getContents();
+      const diff = lastSyncedRef.current.diff(current);
+      if (diff.ops.length > 0) {
+        sendDelta(diff.ops, seqNo);
+        lastSyncedRef.current = current;
+      }
     };
+    const handler = (_delta, _oldDelta, source) => {
+      if (source !== 'user') return;
+      sendPendingDiff();
+    };
+
+    // composition 중: Quill 2가 mutation 처리를 차단하므로 DOM에서 직접 추출.
+    // 구글 독스 식 접근 — composition 중인 임시 글자("아", "안", "안ㄴ" 등)도
+    // 즉시 다른 사용자에게 보이도록 50ms 폴링으로 동기화한다.
+    const syncFromDom = () => {
+      if (!quillRef.current || !lastSyncedRef.current) return;
+      const text = quillRef.current.root.innerText;
+      const normalized = text.endsWith('\n') ? text : `${text}\n`;
+      const newContents = new Delta().insert(normalized);
+      const diff = lastSyncedRef.current.diff(newContents);
+      if (diff.ops.length > 0) {
+        sendDelta(diff.ops, seqNo);
+        lastSyncedRef.current = newContents;
+      }
+    };
+
+    let pollTimer = null;
+    const handleCompositionStart = () => {
+      if (pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(syncFromDom, 50);
+    };
+    const handleCompositionEnd = () => {
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
+      // Quill이 commit을 contents에 반영할 시간을 준 뒤 정식 sync (attributes 복원)
+      setTimeout(sendPendingDiff, 10);
+    };
+
     quill.on('text-change', handler);
-    return () => quill.off('text-change', handler);
+    quill.root.addEventListener('compositionstart', handleCompositionStart);
+    quill.root.addEventListener('compositionend', handleCompositionEnd);
+    return () => {
+      quill.off('text-change', handler);
+      quill.root.removeEventListener('compositionstart', handleCompositionStart);
+      quill.root.removeEventListener('compositionend', handleCompositionEnd);
+      if (pollTimer) clearInterval(pollTimer);
+    };
   }, [sendDelta, seqNo, ws]);
 
   if (loading) {
