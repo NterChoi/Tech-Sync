@@ -1,5 +1,6 @@
 package com.techsync.controller;
 
+import com.techsync.dto.CursorMessage;
 import com.techsync.dto.DeltaMessage;
 import com.techsync.exception.BusinessException;
 import com.techsync.service.EditorService;
@@ -24,10 +25,22 @@ public class EditorWebSocketController {
     public void edit(@DestinationVariable Long workspaceId,
                      @Payload @Valid DeltaMessage message,
                      Principal principal) {
+        Long userId = requireUserId(principal);
+        editorService.applyDelta(workspaceId, userId, message);
+    }
+
+    @MessageMapping("/cursor/{workspaceId}")
+    public void cursor(@DestinationVariable Long workspaceId,
+                       @Payload CursorMessage message,
+                       Principal principal) {
+        Long userId = requireUserId(principal);
+        editorService.broadcastCursor(workspaceId, userId, message);
+    }
+
+    private Long requireUserId(Principal principal) {
         if (!(principal instanceof Authentication auth) || auth.getPrincipal() == null) {
             throw new BusinessException("인증 정보가 없습니다.", HttpStatus.UNAUTHORIZED);
         }
-        Long userId = (Long) auth.getPrincipal();
-        editorService.applyDelta(workspaceId, userId, message);
+        return (Long) auth.getPrincipal();
     }
 }

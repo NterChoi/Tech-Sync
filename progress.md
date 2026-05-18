@@ -8,10 +8,10 @@
 
 ## 현재 상태
 
-- 마지막 업데이트: 2026-05-11
-- 현재 브랜치: `feature/frontend-ime-composition` (한글 IME 글자 누락 패치)
+- 마지막 업데이트: 2026-05-18
+- 현재 브랜치: `feature/cursor-presence` (커서 공유 구현 완료, 시연 검증 통과)
 - 4/30 발표 완료. 5/28 3차 발표 대비 협업 워크스페이스 완성도 작업 진행 중
-- 다음 작업: 커서 공유 (quill-cursors + STOMP `/cursor`) → 2-2b OT 변환 → 자동저장
+- 다음 작업: 2-2b OT 변환 → DRAFT_SNAPSHOT 자동저장 → DRAFT_VERSION 수동 저장
 
 ---
 
@@ -177,6 +177,34 @@
 - compositionend 후엔 Quill 정식 처리에 맡겨 attributes(bold/italic 등) 복원
 - 시연 검증: "아"만 입력해도 다른 브라우저에 즉시 표시, "안녕하세요 반갑습니다" 마지막 글자까지 정상 송신
 
+#### 4-3. feature/cursor-presence ✅ (2026-05-18, 5/28 발표 대비)
+- Google Docs 스타일 커서 공유 (다른 사용자의 커서 위치/선택 영역 색상 표시)
+- 새 STOMP destination: `/app/cursor/{workspaceId}` (C→S), `/topic/workspace/{id}/cursor` (S→C)
+- `quill-cursors` 모듈 등록, userId 해시 기반 색상 결정 (`hsl(hue, 70%, 45%)`)
+- 사용자 이름은 `WorkspaceDetailResponse.members[].userName`에서 프론트가 룩업 (백엔드 DB 조회 0회)
+- 송신 throttle 80ms (마우스 드래그 시 selection-change 폭주 방지)
+- 포커스 잃음(`range === null`) → `cursors.removeCursor` 호출로 상대 화면에서 제거
+- 재연결 시 `cursors.clearCursors()`로 stale 커서 정리
+- DELTA_LOG 미저장 (휘발성 + OT와 무관), Redis seqNo 채번 미사용
+
+**구현 파일:**
+
+| 파일 | 내용 |
+|------|------|
+| `dto/CursorMessage.java` | 수신 페이로드 (range: index, length) |
+| `dto/CursorBroadcast.java` | 송신 페이로드 (workspaceId, userId, range) |
+| `service/EditorService.java` / `EditorServiceImpl.java` | `broadcastCursor` 메서드 추가 (멤버 검증 후 토픽 발행) |
+| `controller/EditorWebSocketController.java` | `@MessageMapping("/cursor/{workspaceId}")` 추가, 인증 검증 헬퍼로 추출 |
+| `test/service/EditorServiceImplTest.java` | 커서 단위 테스트 3개 (정상/비멤버/포커스 잃음) |
+| `src/hooks/useEditorSocket.js` | `/cursor` 구독 + `sendCursor(range)` 함수 노출 |
+| `src/pages/WorkspaceEditorPage.jsx` | `Quill.register('modules/cursors')`, selection-change → throttled send, 원격 cursor 수신 처리, 재연결 시 clearCursors |
+
+**시연 검증 완료 (2026-05-18):**
+- ✅ 커서 위치 색상 표시 + 이름 라벨
+- ✅ 드래그 선택 영역 표시
+- ✅ 포커스 잃음 시 상대 화면에서 커서 사라짐
+- ✅ 한글 IME 입력 중에도 커서/글자 동기화 정상
+
 ### Phase 0: 인프라 & 인증 ✅
 - Spring Boot 3.x 프로젝트 초기 설정
 - Docker Compose (MariaDB, MongoDB, Redis)
@@ -211,7 +239,7 @@
 - [x] 워크스페이스 목록/상세/멤버 — PR #8
 - [x] 에디터 컴포넌트 (Quill.js + STOMP) — PR #8 + hotfix
 - [x] 한글 IME composition 이슈 해결 (50ms DOM 폴링 방식) — 2026-05-11, feature/frontend-ime-composition
-- [ ] 커서 공유 (cursor presence, quill-cursors + STOMP `/cursor` destination)
+- [x] 커서 공유 (quill-cursors + STOMP `/cursor` destination) — 2026-05-18, feature/cursor-presence
 - [ ] 키워드 구독 페이지 (NAVER 뉴스 데모용, nice-to-have)
 - [ ] useSSE.js 훅 (Phase 3 알림 시스템 진행 시)
 
@@ -231,6 +259,8 @@
 | 2026-04-27 | 토큰은 localStorage 저장 + axios 인터셉터로 자동 첨부 | 발표 데모 환경에서 XSS 위험은 비현실적, 단순함 우선 |
 | 2026-04-27 | 백엔드 통신은 Vite proxy로 8080 우회 | CORS 설정 회피, dev 환경 단순화 |
 | 2026-04-28 | axios 인터셉터에서 401뿐 아니라 403도 토큰 만료로 처리 | Spring Security stateless+JWT 환경에서 401 대신 403을 자주 던짐, _retry 플래그로 무한 루프 방지 |
+| 2026-05-18 | 커서 메시지를 DELTA_LOG에 저장하지 않음 | 휘발성 데이터고 OT 변환과 무관, MongoDB 부하 + seqNo 채번 비용 회피 |
+| 2026-05-18 | CursorBroadcast에 userName 미포함, 프론트가 멤버 목록에서 룩업 | 고빈도 메시지(throttle 80ms)마다 백엔드 User 조회를 피함, WorkspaceDetailResponse가 이미 멤버 이름을 들고 있음 |
 
 ---
 
