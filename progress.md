@@ -8,13 +8,12 @@
 
 ## 현재 상태
 
-- 마지막 업데이트: 2026-05-18
-- 현재 브랜치: `feature/cursor-presence` (커서 공유 커밋 `489e4f3` push 완료, develop으로 PR 대기)
+- 마지막 업데이트: 2026-05-21
+- 현재 브랜치: `develop` (cursor-presence PR #11/#12 머지 완료, HEAD `bd81104`)
 - 4/30 발표 완료. 5/28 3차 발표 대비 협업 워크스페이스 완성도 작업 진행 중
 - 다음 작업: 2-2b OT 변환 → DRAFT_SNAPSHOT 자동저장 → DRAFT_VERSION 수동 저장
 
-### 다음 세션 이어받기 메모 (2026-05-18 마무리 시점)
-- **cursor-presence PR**: https://github.com/NterChoi/Tech-Sync/compare/develop...feature/cursor-presence — 머지하고 시작
+### 다음 세션 이어받기 메모 (2026-05-21 시점)
 - **OT 변환(2-2b) 진입 직전 중단**: 구현 위치 3안 비교까지 정리 (A: 서버 OT / B: 클라이언트 OT / C: 하이브리드). Java용 quill-delta 호환 라이브러리가 잘 알려진 게 없어 B(클라이언트 OT) 추천 분석 상태. **다음 세션은 위치 선택부터 시작**
 - **로컬 상태 주의**:
   - 세션 시작 시 stash 보관한 `build.gradle`의 `// 스프링 3부터 확인 필요` 메모가 `stash@{0}`에 남아있음 (커서 작업과 무관, 필요 시 `git stash pop`)
@@ -184,7 +183,7 @@
 - compositionend 후엔 Quill 정식 처리에 맡겨 attributes(bold/italic 등) 복원
 - 시연 검증: "아"만 입력해도 다른 브라우저에 즉시 표시, "안녕하세요 반갑습니다" 마지막 글자까지 정상 송신
 
-#### 4-3. feature/cursor-presence ✅ (2026-05-18, 5/28 발표 대비)
+#### 4-3. feature/cursor-presence ✅ (→ develop merge 완료, PR #11/#12, 2026-05-18 구현 / 2026-05-21 머지)
 - Google Docs 스타일 커서 공유 (다른 사용자의 커서 위치/선택 영역 색상 표시)
 - 새 STOMP destination: `/app/cursor/{workspaceId}` (C→S), `/topic/workspace/{id}/cursor` (S→C)
 - `quill-cursors` 모듈 등록, userId 해시 기반 색상 결정 (`hsl(hue, 70%, 45%)`)
@@ -246,7 +245,7 @@
 - [x] 워크스페이스 목록/상세/멤버 — PR #8
 - [x] 에디터 컴포넌트 (Quill.js + STOMP) — PR #8 + hotfix
 - [x] 한글 IME composition 이슈 해결 (50ms DOM 폴링 방식) — 2026-05-11, feature/frontend-ime-composition
-- [x] 커서 공유 (quill-cursors + STOMP `/cursor` destination) — 2026-05-18, feature/cursor-presence
+- [x] 커서 공유 (quill-cursors + STOMP `/cursor` destination) — 2026-05-18 구현 / 2026-05-21 머지, PR #11/#12
 - [ ] 키워드 구독 페이지 (NAVER 뉴스 데모용, nice-to-have)
 - [ ] useSSE.js 훅 (Phase 3 알림 시스템 진행 시)
 
