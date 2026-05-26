@@ -37,3 +37,17 @@ export function getSnapshot(id) {
 export function saveSnapshot(id, content) {
   return api.put(`/workspaces/${id}/snapshot`, { content }).then((r) => r.data.data);
 }
+
+export function getVersions(id) {
+  return api.get(`/workspaces/${id}/versions`).then((r) => r.data.data);
+}
+
+export function getVersion(id, versionNo) {
+  return api.get(`/workspaces/${id}/versions/${versionNo}`).then((r) => r.data.data);
+}
+
+export function saveVersion(id, content, versionType) {
+  return api
+    .post(`/workspaces/${id}/versions`, { content, versionType })
+    .then((r) => r.data.data);
+}

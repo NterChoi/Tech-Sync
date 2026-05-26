@@ -2,14 +2,18 @@ package com.techsync.service;
 
 import com.techsync.domain.DeltaLog;
 import com.techsync.domain.DraftSnapshot;
+import com.techsync.domain.DraftVersion;
+import com.techsync.domain.DraftVersion.VersionType;
 import com.techsync.dto.CursorBroadcast;
 import com.techsync.dto.CursorMessage;
 import com.techsync.dto.DeltaBroadcast;
 import com.techsync.dto.DeltaMessage;
 import com.techsync.dto.SnapshotResponse;
+import com.techsync.dto.VersionResponse;
 import com.techsync.exception.BusinessException;
 import com.techsync.repository.DeltaLogRepository;
 import com.techsync.repository.DraftSnapshotRepository;
+import com.techsync.repository.DraftVersionRepository;
 import com.techsync.repository.WorkspaceMemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -33,6 +37,7 @@ public class EditorServiceImpl implements EditorService {
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final DeltaLogRepository deltaLogRepository;
     private final DraftSnapshotRepository draftSnapshotRepository;
+    private final DraftVersionRepository draftVersionRepository;
     private final RedisTemplate<String, Object> redisTemplate;
     private final SimpMessagingTemplate messagingTemplate;
 
@@ -108,5 +113,53 @@ public class EditorServiceImpl implements EditorService {
         return draftSnapshotRepository.findByWorkspaceId(workspaceId)
                 .map(SnapshotResponse::from)
                 .orElse(null);
+    }
+
+    @Override
+    public VersionResponse saveVersion(Long workspaceId, Long userId,
+                                       List<Map<String, Object>> content,
+                                       VersionType versionType) {
+        if (!workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspaceId, userId)) {
+            throw new BusinessException("워크스페이스 멤버가 아닙니다.", HttpStatus.FORBIDDEN);
+        }
+
+        Long nextVersionNo = draftVersionRepository
+                .findFirstByWorkspaceIdOrderByVersionNoDesc(workspaceId)
+                .map(v -> v.getVersionNo() + 1)
+                .orElse(1L);
+
+        DraftVersion version = draftVersionRepository.save(DraftVersion.builder()
+                .workspaceId(workspaceId)
+                .versionNo(nextVersionNo)
+                .versionType(versionType)
+                .content(content)
+                .createdBy(userId)
+                .createdAt(LocalDateTime.now())
+                .build());
+
+        return VersionResponse.from(version);
+    }
+
+    @Override
+    public List<VersionResponse> getVersions(Long workspaceId, Long userId) {
+        if (!workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspaceId, userId)) {
+            throw new BusinessException("워크스페이스 멤버가 아닙니다.", HttpStatus.FORBIDDEN);
+        }
+
+        return draftVersionRepository.findByWorkspaceIdOrderByVersionNoDesc(workspaceId)
+                .stream()
+                .map(VersionResponse::summary)
+                .toList();
+    }
+
+    @Override
+    public VersionResponse getVersion(Long workspaceId, Long userId, Long versionNo) {
+        if (!workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspaceId, userId)) {
+            throw new BusinessException("워크스페이스 멤버가 아닙니다.", HttpStatus.FORBIDDEN);
+        }
+
+        return draftVersionRepository.findByWorkspaceIdAndVersionNo(workspaceId, versionNo)
+                .map(VersionResponse::from)
+                .orElseThrow(() -> new BusinessException("해당 버전을 찾을 수 없습니다.", HttpStatus.NOT_FOUND));
     }
 }

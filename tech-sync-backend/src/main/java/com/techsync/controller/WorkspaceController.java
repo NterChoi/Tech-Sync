@@ -90,4 +90,29 @@ public class WorkspaceController {
         return ResponseEntity.ok(
                 ApiResponse.success(editorService.saveSnapshot(workspaceId, userId, request.content())));
     }
+
+    @PostMapping("/{workspaceId}/versions")
+    public ResponseEntity<ApiResponse<VersionResponse>> saveVersion(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long workspaceId,
+            @Valid @RequestBody VersionRequest request) {
+        VersionResponse response = editorService.saveVersion(
+                workspaceId, userId, request.content(), request.versionType());
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.created(response));
+    }
+
+    @GetMapping("/{workspaceId}/versions")
+    public ResponseEntity<ApiResponse<List<VersionResponse>>> getVersions(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long workspaceId) {
+        return ResponseEntity.ok(ApiResponse.success(editorService.getVersions(workspaceId, userId)));
+    }
+
+    @GetMapping("/{workspaceId}/versions/{versionNo}")
+    public ResponseEntity<ApiResponse<VersionResponse>> getVersion(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long workspaceId,
+            @PathVariable Long versionNo) {
+        return ResponseEntity.ok(ApiResponse.success(editorService.getVersion(workspaceId, userId, versionNo)));
+    }
 }
