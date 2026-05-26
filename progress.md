@@ -9,12 +9,12 @@
 ## 현재 상태
 
 - 마지막 업데이트: 2026-05-26
-- 현재 브랜치: `develop` (DRAFT_SNAPSHOT 머지 완료, HEAD `6732e91`)
-- 4/30 발표 완료. 5/28 3차 발표 대비 — 남은 작업: 2-2d DRAFT_VERSION 수동 저장
-- 다음 작업: 2-2d DRAFT_VERSION 수동 저장 → Phase 2 OT 마이그레이션(발표 후)
+- 현재 브랜치: `develop` (DRAFT_VERSION 머지 완료, HEAD `c7b8a4a`)
+- **5/28 3차 발표 대비 작업 완료** (2-2c + 2-2d)
+- 다음 작업: Phase 2 OT 서버 마이그레이션 (발표 후)
 
 ### 이어받기 메모 (2026-05-26, 맥북 환경)
-- 2-2c DRAFT_SNAPSHOT 머지 완료. 바로 2-2d 진행
+- 2-2c DRAFT_SNAPSHOT + 2-2d DRAFT_VERSION 모두 머지 완료
 - `gh auth login` 미완료 — PR은 웹에서 수동 머지 중
 
 ---
@@ -253,6 +253,24 @@
 | `src/api/workspaces.js` | `getSnapshot()`, `saveSnapshot()` API 함수 |
 | `src/pages/WorkspaceEditorPage.jsx` | 스냅샷 로드 + 30초 자동저장 + 상태 칩 |
 
+#### 2-2d. feature/draft-version ✅ (→ develop merge 완료, 2026-05-26)
+- MongoDB `DRAFT_VERSION` 컬렉션 — 수동 저장 체크포인트 (MAJOR/MINOR 구분)
+- REST API: `POST /api/workspaces/{id}/versions` (생성), `GET .../versions` (목록), `GET .../versions/{versionNo}` (상세+content)
+- 프론트: 저장 버튼 + 버전 기록 Drawer (클릭 시 해당 버전 내용으로 에디터 복원)
+- 버전 번호 자동 채번 (마지막 versionNo + 1)
+
+**구현 파일:**
+
+| 파일 | 내용 |
+|------|------|
+| `domain/DraftVersion.java` | MongoDB Document — workspaceId, versionNo, versionType(MAJOR/MINOR), content, createdBy, createdAt |
+| `repository/DraftVersionRepository.java` | 버전 목록/최신/특정 버전 조회 |
+| `dto/VersionRequest.java` / `VersionResponse.java` | 요청/응답 DTO (목록 조회 시 content 제외하는 summary 메서드) |
+| `service/EditorService.java` / `EditorServiceImpl.java` | `saveVersion()`, `getVersions()`, `getVersion()` |
+| `controller/WorkspaceController.java` | `POST/GET /{id}/versions`, `GET /{id}/versions/{versionNo}` |
+| `src/api/workspaces.js` | `saveVersion()`, `getVersions()`, `getVersion()` |
+| `src/pages/WorkspaceEditorPage.jsx` | 저장 버튼 + 버전 기록 Drawer + 복원 기능 |
+
 ### Phase 0: 인프라 & 인증 ✅
 - Spring Boot 3.x 프로젝트 초기 설정
 - Docker Compose (MariaDB, MongoDB, Redis)
@@ -272,7 +290,7 @@
 - [x] 2-2a. WebSocket 편집 인프라 (DELTA_LOG + STOMP 인증) — 2026-04-27 완료, PR #7
 - [x] 2-2b. OT 변환 알고리즘 (Phase 1 클라이언트 OT) — 2026-05-26 완료, PR #13
 - [x] 2-2c. DRAFT_SNAPSHOT 자동저장 (30초) — 2026-05-26 완료, 웹 머지
-- [ ] 2-2d. DRAFT_VERSION 수동 저장
+- [x] 2-2d. DRAFT_VERSION 수동 저장 — 2026-05-26 완료, 웹 머지
 - [ ] Quill.js 에디터 연동 (프론트엔드)
 
 ### 발표 후 (Phase 2 후속)
