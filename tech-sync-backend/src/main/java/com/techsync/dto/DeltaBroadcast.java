@@ -11,15 +11,17 @@ public record DeltaBroadcast(
         Long seqNo,
         Long userId,
         List<Map<String, Object>> ops,
-        LocalDateTime timestamp
+        LocalDateTime timestamp,
+        Long clientSeqNo
 ) {
-    public static DeltaBroadcast of(DeltaLog log) {
+    public static DeltaBroadcast of(DeltaLog log, Long clientSeqNo) {
         return new DeltaBroadcast(
                 log.getWorkspaceId(),
                 log.getSeqNo(),
                 log.getUserId(),
                 log.getOps(),
-                log.getCreatedAt()
+                log.getCreatedAt(),
+                clientSeqNo
         );
     }
 }

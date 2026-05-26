@@ -40,7 +40,6 @@ export default function WorkspaceEditorPage() {
   const [ws, setWs] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [seqNo, setSeqNo] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -103,11 +102,11 @@ export default function WorkspaceEditorPage() {
     };
   }, [ws]);
 
+  // broadcast.ops는 useEditorSocket 훅이 pending에 대해 transform을 마친 상태로 도착한다.
   const handleRemoteDelta = useCallback((broadcast) => {
     if (!quillRef.current) return;
     quillRef.current.updateContents({ ops: broadcast.ops }, 'silent');
     lastSyncedRef.current = quillRef.current.getContents();
-    setSeqNo(broadcast.seqNo);
   }, []);
 
   const handleRemoteCursor = useCallback(
@@ -145,7 +144,7 @@ export default function WorkspaceEditorPage() {
       const current = quillRef.current.getContents();
       const diff = lastSyncedRef.current.diff(current);
       if (diff.ops.length > 0) {
-        sendDelta(diff.ops, seqNo);
+        sendDelta(diff.ops);
         lastSyncedRef.current = current;
       }
     };
@@ -164,7 +163,7 @@ export default function WorkspaceEditorPage() {
       const newContents = new Delta().insert(normalized);
       const diff = lastSyncedRef.current.diff(newContents);
       if (diff.ops.length > 0) {
-        sendDelta(diff.ops, seqNo);
+        sendDelta(diff.ops);
         lastSyncedRef.current = newContents;
       }
     };
@@ -192,7 +191,7 @@ export default function WorkspaceEditorPage() {
       quill.root.removeEventListener('compositionend', handleCompositionEnd);
       if (pollTimer) clearInterval(pollTimer);
     };
-  }, [sendDelta, seqNo, ws]);
+  }, [sendDelta, ws]);
 
   useEffect(() => {
     const quill = quillRef.current;

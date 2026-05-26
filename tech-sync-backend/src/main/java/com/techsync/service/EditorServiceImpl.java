@@ -49,7 +49,7 @@ public class EditorServiceImpl implements EditorService {
                 .createdAt(LocalDateTime.now())
                 .build());
 
-        DeltaBroadcast broadcast = DeltaBroadcast.of(log);
+        DeltaBroadcast broadcast = DeltaBroadcast.of(log, message.clientSeqNo());
         messagingTemplate.convertAndSend(
                 EDIT_TOPIC_PREFIX + workspaceId + EDIT_TOPIC_SUFFIX,
                 broadcast);
