@@ -99,6 +99,7 @@ class EditorServiceImplTest {
         assertThat(result.seqNo()).isEqualTo(11L);
         assertThat(result.userId()).isEqualTo(100L);
         assertThat(result.ops()).hasSize(2);
+        assertThat(result.clientSeqNo()).isEqualTo(10L);
 
         ArgumentCaptor<DeltaLog> logCaptor = ArgumentCaptor.forClass(DeltaLog.class);
         verify(deltaLogRepository).save(logCaptor.capture());
@@ -129,6 +130,27 @@ class EditorServiceImplTest {
         assertThat(second.seqNo()).isEqualTo(12L);
         verify(valueOperations, org.mockito.Mockito.times(2))
                 .increment("delta:seq:1");
+    }
+
+    @Test
+    @DisplayName("applyDelta: 브로드캐스트는 클라가 보낸 clientSeqNo를 echo한다 (Phase 1 클라이언트 OT — 자신의 ack 식별용)")
+    void applyDelta_echoesClientSeqNo() {
+        given(workspaceMemberRepository.existsByWorkspaceIdAndUserId(1L, 100L)).willReturn(true);
+        given(redisTemplate.opsForValue()).willReturn(valueOperations);
+        given(valueOperations.increment("delta:seq:1")).willReturn(42L);
+        given(deltaLogRepository.save(any(DeltaLog.class)))
+                .willAnswer(inv -> inv.getArgument(0));
+        DeltaMessage withClientSeq = new DeltaMessage(
+                List.of(Map.of("insert", "X")), 41L);
+
+        DeltaBroadcast result = editorService.applyDelta(1L, 100L, withClientSeq);
+
+        assertThat(result.seqNo()).isEqualTo(42L);
+        assertThat(result.clientSeqNo()).isEqualTo(41L);
+
+        ArgumentCaptor<DeltaBroadcast> broadcastCaptor = ArgumentCaptor.forClass(DeltaBroadcast.class);
+        verify(messagingTemplate).convertAndSend(eq("/topic/workspace/1/edit"), broadcastCaptor.capture());
+        assertThat(broadcastCaptor.getValue().clientSeqNo()).isEqualTo(41L);
     }
 
     // ==================== 실패 ====================
