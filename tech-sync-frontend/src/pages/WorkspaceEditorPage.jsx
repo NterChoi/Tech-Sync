@@ -6,10 +6,18 @@ import {
   Button,
   Chip,
   CircularProgress,
+  Divider,
+  Drawer,
+  IconButton,
+  List,
+  ListItemButton,
+  ListItemText,
   Stack,
+  Tooltip,
   Typography,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import HistoryIcon from '@mui/icons-material/History';
 import SaveIcon from '@mui/icons-material/Save';
 import Quill from 'quill';
 import QuillCursors from 'quill-cursors';
@@ -44,6 +52,9 @@ export default function WorkspaceEditorPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [saveStatus, setSaveStatus] = useState(null);
+  const [versions, setVersions] = useState([]);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [versionSaving, setVersionSaving] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -254,6 +265,46 @@ export default function WorkspaceEditorPage() {
     return () => clearInterval(timer);
   }, [wsId, connected]);
 
+  const handleSaveVersion = useCallback(
+    (versionType = 'MAJOR') => {
+      const quill = quillRef.current;
+      if (!quill || versionSaving) return;
+      setVersionSaving(true);
+      wsApi
+        .saveVersion(wsId, quill.getContents().ops, versionType)
+        .then(() => {
+          lastSavedRef.current = JSON.stringify(quill.getContents().ops);
+          setSaveStatus('saved');
+        })
+        .catch(() => setError('버전 저장에 실패했습니다.'))
+        .finally(() => setVersionSaving(false));
+    },
+    [wsId, versionSaving],
+  );
+
+  const loadVersions = useCallback(() => {
+    wsApi.getVersions(wsId).then(setVersions).catch(() => {});
+  }, [wsId]);
+
+  const handleOpenHistory = useCallback(() => {
+    loadVersions();
+    setDrawerOpen(true);
+  }, [loadVersions]);
+
+  const handleRestoreVersion = useCallback(
+    (versionNo) => {
+      wsApi.getVersion(wsId, versionNo).then((v) => {
+        const quill = quillRef.current;
+        if (!quill || !v?.content) return;
+        quill.setContents({ ops: v.content }, 'silent');
+        lastSyncedRef.current = quill.getContents();
+        lastSavedRef.current = JSON.stringify(quill.getContents().ops);
+        setDrawerOpen(false);
+      });
+    },
+    [wsId],
+  );
+
   useEffect(() => {
     if (!connected) return;
     const cursors = quillRef.current?.getModule('cursors');
@@ -295,14 +346,28 @@ export default function WorkspaceEditorPage() {
           {ws.workspaceName}
         </Typography>
         <Stack direction="row" spacing={1} alignItems="center">
+          <Button
+            variant="contained"
+            size="small"
+            startIcon={<SaveIcon />}
+            onClick={() => handleSaveVersion('MAJOR')}
+            disabled={versionSaving || !connected}
+          >
+            {versionSaving ? '저장 중...' : '저장'}
+          </Button>
+          <Tooltip title="버전 기록">
+            <IconButton size="small" onClick={handleOpenHistory}>
+              <HistoryIcon />
+            </IconButton>
+          </Tooltip>
           {saveStatus === 'saving' && (
-            <Chip icon={<SaveIcon />} label="저장 중..." size="small" />
+            <Chip label="자동저장 중..." size="small" />
           )}
           {saveStatus === 'saved' && (
-            <Chip icon={<SaveIcon />} label="자동저장됨" size="small" color="info" />
+            <Chip label="자동저장됨" size="small" color="info" />
           )}
           {saveStatus === 'error' && (
-            <Chip icon={<SaveIcon />} label="저장 실패" size="small" color="error" />
+            <Chip label="저장 실패" size="small" color="error" />
           )}
           <Chip
             label={connected ? '연결됨' : '연결 중...'}
@@ -329,6 +394,38 @@ export default function WorkspaceEditorPage() {
       >
         <Box ref={editorContainerRef} />
       </Box>
+
+      <Drawer
+        anchor="right"
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+      >
+        <Box sx={{ width: 300, p: 2 }}>
+          <Typography variant="h6" fontWeight={700} gutterBottom>
+            버전 기록
+          </Typography>
+          <Divider sx={{ mb: 1 }} />
+          {versions.length === 0 ? (
+            <Typography color="text.secondary" sx={{ mt: 2 }}>
+              저장된 버전이 없습니다.
+            </Typography>
+          ) : (
+            <List disablePadding>
+              {versions.map((v) => (
+                <ListItemButton
+                  key={v.versionNo}
+                  onClick={() => handleRestoreVersion(v.versionNo)}
+                >
+                  <ListItemText
+                    primary={`v${v.versionNo} (${v.versionType})`}
+                    secondary={new Date(v.createdAt).toLocaleString('ko-KR')}
+                  />
+                </ListItemButton>
+              ))}
+            </List>
+          )}
+        </Box>
+      </Drawer>
     </Box>
   );
 }

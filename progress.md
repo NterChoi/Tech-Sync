@@ -9,24 +9,13 @@
 ## 현재 상태
 
 - 마지막 업데이트: 2026-05-26
-- 현재 브랜치: `develop` (OT 변환 Phase 1 PR #13 머지 완료, HEAD `bf42c8f`)
-- 4/30 발표 완료. 5/28 3차 발표 대비 협업 워크스페이스 완성도 작업 진행 중 (D-2)
-- 다음 작업: 2-2c DRAFT_SNAPSHOT 자동저장(30초 upsert) → 2-2d DRAFT_VERSION 수동 저장 → Phase 2 OT 마이그레이션(발표 후)
+- 현재 브랜치: `develop` (DRAFT_SNAPSHOT 머지 완료, HEAD `6732e91`)
+- 4/30 발표 완료. 5/28 3차 발표 대비 — 남은 작업: 2-2d DRAFT_VERSION 수동 저장
+- 다음 작업: 2-2d DRAFT_VERSION 수동 저장 → Phase 2 OT 마이그레이션(발표 후)
 
-### 다음 세션 이어받기 메모 (2026-05-26 마무리, **다음 세션은 맥북에서 진행**)
-- **머신 전환**: Windows에서 OT Phase 1 머지까지 완료. 다음 작업(2-2c)부터는 맥북에서. 맥북 시작 시:
-  - `git fetch && git checkout develop && git pull`
-  - `CLAUDE.local.md`의 `OS: mac` 확인 (.gitignore라 자동 동기화 안 됨, 머신별 관리)
-  - `docker compose up -d` 로 MariaDB/MongoDB/Redis 기동
-  - 새 의존성 0개 (quill-delta는 quill 번들 포함) — `npm install` / `./gradlew build`는 안전망으로만 한 번
-- **2-2c 시작 시점에 결정 필요**: SNAPSHOT 범위
-  - (a) 발표 시연용 최소: `DRAFT_SNAPSHOT` 30초 upsert + 페이지 진입 시 복원 — 가장 빠름, 시연 검증 가능
-  - (b) 풀스펙: + Redis 임시 백업 + 3회 연속 실패 시 `/queue/user/{userId}` 경고 (websocket.md 명세)
-  - D-2 + 2-2d/Phase 2 마이그레이션까지 남았으니 (a) 추천
-- **OT Phase 2(서버 OT) 발표 후 마이그레이션 항목 신설** — "진행 예정 작업"에 추가됨
-- **로컬 상태 주의 (Windows 머신 한정)**:
-  - `stash@{0}`에 `build.gradle` 메모(`// 스프링 3부터 확인 필요`) 그대로 보관 — 맥북엔 영향 없음
-  - dev 서버(8080 백엔드 + 3000 프론트)는 이 세션 끝에 정리
+### 이어받기 메모 (2026-05-26, 맥북 환경)
+- 2-2c DRAFT_SNAPSHOT 머지 완료. 바로 2-2d 진행
+- `gh auth login` 미완료 — PR은 웹에서 수동 머지 중
 
 ---
 
@@ -246,6 +235,24 @@
 - ✅ 포커스 잃음 시 상대 화면에서 커서 사라짐
 - ✅ 한글 IME 입력 중에도 커서/글자 동기화 정상
 
+#### 2-2c. feature/draft-snapshot ✅ (→ develop merge 완료, 2026-05-26)
+- MongoDB `DRAFT_SNAPSHOT` 컬렉션 — 워크스페이스별 단일 문서 upsert 자동저장
+- REST API: `GET/PUT /api/workspaces/{id}/snapshot` (멤버 검증 포함)
+- 프론트: 에디터 진입 시 스냅샷 로드 → Quill 세팅, 30초 인터벌 자동저장 (변경 감지), 저장 상태 칩 표시
+- 발표 시연용 최소 범위(a)로 구현 — Redis 임시 백업/실패 경고는 미포함
+
+**구현 파일:**
+
+| 파일 | 내용 |
+|------|------|
+| `domain/DraftSnapshot.java` | MongoDB Document — workspaceId(unique), content, lastEditorId, updatedAt |
+| `repository/DraftSnapshotRepository.java` | `findByWorkspaceId()` |
+| `dto/SnapshotRequest.java` / `SnapshotResponse.java` | 요청/응답 DTO |
+| `service/EditorService.java` / `EditorServiceImpl.java` | `saveSnapshot()` find-or-create upsert, `getSnapshot()` 조회 |
+| `controller/WorkspaceController.java` | `GET/PUT /{id}/snapshot` 엔드포인트 추가 |
+| `src/api/workspaces.js` | `getSnapshot()`, `saveSnapshot()` API 함수 |
+| `src/pages/WorkspaceEditorPage.jsx` | 스냅샷 로드 + 30초 자동저장 + 상태 칩 |
+
 ### Phase 0: 인프라 & 인증 ✅
 - Spring Boot 3.x 프로젝트 초기 설정
 - Docker Compose (MariaDB, MongoDB, Redis)
@@ -264,7 +271,7 @@
 - [x] 2-1. 워크스페이스 CRUD (WORKSPACE, WORKSPACE_MEMBER) — 2026-04-20 완료, 2026-04-23 테스트 추가, PR #6
 - [x] 2-2a. WebSocket 편집 인프라 (DELTA_LOG + STOMP 인증) — 2026-04-27 완료, PR #7
 - [x] 2-2b. OT 변환 알고리즘 (Phase 1 클라이언트 OT) — 2026-05-26 완료, PR #13
-- [ ] 2-2c. DRAFT_SNAPSHOT 자동저장 (30초)
+- [x] 2-2c. DRAFT_SNAPSHOT 자동저장 (30초) — 2026-05-26 완료, 웹 머지
 - [ ] 2-2d. DRAFT_VERSION 수동 저장
 - [ ] Quill.js 에디터 연동 (프론트엔드)
 
