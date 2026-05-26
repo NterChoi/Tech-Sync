@@ -1,6 +1,7 @@
 package com.techsync.controller;
 
 import com.techsync.dto.*;
+import com.techsync.service.EditorService;
 import com.techsync.service.WorkspaceService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +18,7 @@ import java.util.List;
 public class WorkspaceController {
 
     private final WorkspaceService workspaceService;
+    private final EditorService editorService;
 
     @PostMapping
     public ResponseEntity<ApiResponse<WorkspaceResponse>> create(
@@ -71,5 +73,21 @@ public class WorkspaceController {
             @PathVariable Long targetUserId) {
         workspaceService.removeMember(userId, workspaceId, targetUserId);
         return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @GetMapping("/{workspaceId}/snapshot")
+    public ResponseEntity<ApiResponse<SnapshotResponse>> getSnapshot(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long workspaceId) {
+        return ResponseEntity.ok(ApiResponse.success(editorService.getSnapshot(workspaceId, userId)));
+    }
+
+    @PutMapping("/{workspaceId}/snapshot")
+    public ResponseEntity<ApiResponse<SnapshotResponse>> saveSnapshot(
+            @AuthenticationPrincipal Long userId,
+            @PathVariable Long workspaceId,
+            @Valid @RequestBody SnapshotRequest request) {
+        return ResponseEntity.ok(
+                ApiResponse.success(editorService.saveSnapshot(workspaceId, userId, request.content())));
     }
 }

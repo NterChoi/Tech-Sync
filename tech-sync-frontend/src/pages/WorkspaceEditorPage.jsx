@@ -10,6 +10,7 @@ import {
   Typography,
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import SaveIcon from '@mui/icons-material/Save';
 import Quill from 'quill';
 import QuillCursors from 'quill-cursors';
 import 'quill/dist/quill.snow.css';
@@ -26,6 +27,7 @@ function userColor(userId) {
 }
 
 const CURSOR_THROTTLE_MS = 80;
+const AUTO_SAVE_INTERVAL_MS = 30_000;
 
 export default function WorkspaceEditorPage() {
   const { id } = useParams();
@@ -36,10 +38,12 @@ export default function WorkspaceEditorPage() {
   const editorContainerRef = useRef(null);
   const quillRef = useRef(null);
   const lastSyncedRef = useRef(null);
+  const lastSavedRef = useRef(null);
 
   const [ws, setWs] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [saveStatus, setSaveStatus] = useState(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,14 +97,30 @@ export default function WorkspaceEditorPage() {
       },
     });
     quillRef.current = quill;
-    lastSyncedRef.current = quill.getContents();
+
+    wsApi.getSnapshot(wsId).then((snapshot) => {
+      if (snapshot?.content && quillRef.current) {
+        quillRef.current.setContents({ ops: snapshot.content }, 'silent');
+      }
+      if (quillRef.current) {
+        lastSyncedRef.current = quillRef.current.getContents();
+        lastSavedRef.current = JSON.stringify(quillRef.current.getContents().ops);
+      }
+    }).catch(() => {
+      if (quillRef.current) {
+        lastSyncedRef.current = quillRef.current.getContents();
+        lastSavedRef.current = JSON.stringify(quillRef.current.getContents().ops);
+      }
+    });
+
     return () => {
       const wrapper = container.parentElement;
       if (wrapper) wrapper.innerHTML = '';
       quillRef.current = null;
       lastSyncedRef.current = null;
+      lastSavedRef.current = null;
     };
-  }, [ws]);
+  }, [ws, wsId]);
 
   // broadcast.ops는 useEditorSocket 훅이 pending에 대해 transform을 마친 상태로 도착한다.
   const handleRemoteDelta = useCallback((broadcast) => {
@@ -216,6 +236,25 @@ export default function WorkspaceEditorPage() {
   }, [sendCursor, ws]);
 
   useEffect(() => {
+    if (!quillRef.current || !connected) return undefined;
+    const timer = setInterval(() => {
+      const quill = quillRef.current;
+      if (!quill) return;
+      const currentOps = JSON.stringify(quill.getContents().ops);
+      if (currentOps === lastSavedRef.current) return;
+      setSaveStatus('saving');
+      wsApi
+        .saveSnapshot(wsId, quill.getContents().ops)
+        .then(() => {
+          lastSavedRef.current = currentOps;
+          setSaveStatus('saved');
+        })
+        .catch(() => setSaveStatus('error'));
+    }, AUTO_SAVE_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [wsId, connected]);
+
+  useEffect(() => {
     if (!connected) return;
     const cursors = quillRef.current?.getModule('cursors');
     cursors?.clearCursors();
@@ -255,11 +294,22 @@ export default function WorkspaceEditorPage() {
         <Typography variant="h4" fontWeight={700}>
           {ws.workspaceName}
         </Typography>
-        <Chip
-          label={connected ? '연결됨' : '연결 중...'}
-          color={connected ? 'success' : 'default'}
-          size="small"
-        />
+        <Stack direction="row" spacing={1} alignItems="center">
+          {saveStatus === 'saving' && (
+            <Chip icon={<SaveIcon />} label="저장 중..." size="small" />
+          )}
+          {saveStatus === 'saved' && (
+            <Chip icon={<SaveIcon />} label="자동저장됨" size="small" color="info" />
+          )}
+          {saveStatus === 'error' && (
+            <Chip icon={<SaveIcon />} label="저장 실패" size="small" color="error" />
+          )}
+          <Chip
+            label={connected ? '연결됨' : '연결 중...'}
+            color={connected ? 'success' : 'default'}
+            size="small"
+          />
+        </Stack>
       </Stack>
       {socketError && (
         <Alert severity="warning" sx={{ mb: 2 }}>

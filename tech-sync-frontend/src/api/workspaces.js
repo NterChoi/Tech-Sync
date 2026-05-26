@@ -29,3 +29,11 @@ export function inviteMember(id, { email, role }) {
 export function removeMember(id, userId) {
   return api.delete(`/workspaces/${id}/members/${userId}`);
 }
+
+export function getSnapshot(id) {
+  return api.get(`/workspaces/${id}/snapshot`).then((r) => r.data.data);
+}
+
+export function saveSnapshot(id, content) {
+  return api.put(`/workspaces/${id}/snapshot`, { content }).then((r) => r.data.data);
+}

@@ -1,12 +1,15 @@
 package com.techsync.service;
 
 import com.techsync.domain.DeltaLog;
+import com.techsync.domain.DraftSnapshot;
 import com.techsync.dto.CursorBroadcast;
 import com.techsync.dto.CursorMessage;
 import com.techsync.dto.DeltaBroadcast;
 import com.techsync.dto.DeltaMessage;
+import com.techsync.dto.SnapshotResponse;
 import com.techsync.exception.BusinessException;
 import com.techsync.repository.DeltaLogRepository;
+import com.techsync.repository.DraftSnapshotRepository;
 import com.techsync.repository.WorkspaceMemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -15,6 +18,8 @@ import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -27,6 +32,7 @@ public class EditorServiceImpl implements EditorService {
 
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final DeltaLogRepository deltaLogRepository;
+    private final DraftSnapshotRepository draftSnapshotRepository;
     private final RedisTemplate<String, Object> redisTemplate;
     private final SimpMessagingTemplate messagingTemplate;
 
@@ -69,5 +75,38 @@ public class EditorServiceImpl implements EditorService {
                 broadcast);
 
         return broadcast;
+    }
+
+    @Override
+    public SnapshotResponse saveSnapshot(Long workspaceId, Long userId,
+                                         List<Map<String, Object>> content) {
+        if (!workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspaceId, userId)) {
+            throw new BusinessException("워크스페이스 멤버가 아닙니다.", HttpStatus.FORBIDDEN);
+        }
+
+        DraftSnapshot snapshot = draftSnapshotRepository.findByWorkspaceId(workspaceId)
+                .map(existing -> {
+                    existing.updateContent(content, userId);
+                    return existing;
+                })
+                .orElse(DraftSnapshot.builder()
+                        .workspaceId(workspaceId)
+                        .content(content)
+                        .lastEditorId(userId)
+                        .updatedAt(LocalDateTime.now())
+                        .build());
+
+        return SnapshotResponse.from(draftSnapshotRepository.save(snapshot));
+    }
+
+    @Override
+    public SnapshotResponse getSnapshot(Long workspaceId, Long userId) {
+        if (!workspaceMemberRepository.existsByWorkspaceIdAndUserId(workspaceId, userId)) {
+            throw new BusinessException("워크스페이스 멤버가 아닙니다.", HttpStatus.FORBIDDEN);
+        }
+
+        return draftSnapshotRepository.findByWorkspaceId(workspaceId)
+                .map(SnapshotResponse::from)
+                .orElse(null);
     }
 }
