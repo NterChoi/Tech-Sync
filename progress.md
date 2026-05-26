@@ -8,15 +8,24 @@
 
 ## 현재 상태
 
-- 마지막 업데이트: 2026-05-21
-- 현재 브랜치: `develop` (cursor-presence PR #11/#12 머지 완료, HEAD `bd81104`)
-- 4/30 발표 완료. 5/28 3차 발표 대비 협업 워크스페이스 완성도 작업 진행 중
-- 다음 작업: 2-2b OT 변환 → DRAFT_SNAPSHOT 자동저장 → DRAFT_VERSION 수동 저장
+- 마지막 업데이트: 2026-05-26
+- 현재 브랜치: `develop` (OT 변환 Phase 1 PR #13 머지 완료, HEAD `bf42c8f`)
+- 4/30 발표 완료. 5/28 3차 발표 대비 협업 워크스페이스 완성도 작업 진행 중 (D-2)
+- 다음 작업: 2-2c DRAFT_SNAPSHOT 자동저장(30초 upsert) → 2-2d DRAFT_VERSION 수동 저장 → Phase 2 OT 마이그레이션(발표 후)
 
-### 다음 세션 이어받기 메모 (2026-05-21 시점)
-- **OT 변환(2-2b) 진입 직전 중단**: 구현 위치 3안 비교까지 정리 (A: 서버 OT / B: 클라이언트 OT / C: 하이브리드). Java용 quill-delta 호환 라이브러리가 잘 알려진 게 없어 B(클라이언트 OT) 추천 분석 상태. **다음 세션은 위치 선택부터 시작**
-- **로컬 상태 주의**:
-  - 세션 시작 시 stash 보관한 `build.gradle`의 `// 스프링 3부터 확인 필요` 메모가 `stash@{0}`에 남아있음 (커서 작업과 무관, 필요 시 `git stash pop`)
+### 다음 세션 이어받기 메모 (2026-05-26 마무리, **다음 세션은 맥북에서 진행**)
+- **머신 전환**: Windows에서 OT Phase 1 머지까지 완료. 다음 작업(2-2c)부터는 맥북에서. 맥북 시작 시:
+  - `git fetch && git checkout develop && git pull`
+  - `CLAUDE.local.md`의 `OS: mac` 확인 (.gitignore라 자동 동기화 안 됨, 머신별 관리)
+  - `docker compose up -d` 로 MariaDB/MongoDB/Redis 기동
+  - 새 의존성 0개 (quill-delta는 quill 번들 포함) — `npm install` / `./gradlew build`는 안전망으로만 한 번
+- **2-2c 시작 시점에 결정 필요**: SNAPSHOT 범위
+  - (a) 발표 시연용 최소: `DRAFT_SNAPSHOT` 30초 upsert + 페이지 진입 시 복원 — 가장 빠름, 시연 검증 가능
+  - (b) 풀스펙: + Redis 임시 백업 + 3회 연속 실패 시 `/queue/user/{userId}` 경고 (websocket.md 명세)
+  - D-2 + 2-2d/Phase 2 마이그레이션까지 남았으니 (a) 추천
+- **OT Phase 2(서버 OT) 발표 후 마이그레이션 항목 신설** — "진행 예정 작업"에 추가됨
+- **로컬 상태 주의 (Windows 머신 한정)**:
+  - `stash@{0}`에 `build.gradle` 메모(`// 스프링 3부터 확인 필요`) 그대로 보관 — 맥북엔 영향 없음
   - dev 서버(8080 백엔드 + 3000 프론트)는 이 세션 끝에 정리
 
 ---
@@ -145,6 +154,32 @@
 - 인증: STOMP CONNECT 프레임의 native Authorization Bearer 헤더 (업계 관례)
 - ROOM_ID 표기를 WORKSPACE_ID로 통일하여 Workspace 엔티티와 일관성 확보
 
+#### 2-2b. feature/ot-client-transform ✅ (→ develop merge 완료, PR #13, 2026-05-26)
+- Phase 1 클라이언트 OT 변환 — 동시 편집 시 quill-delta `transform()`으로 인덱스 보정
+- 서버는 채번 + DELTA_LOG 저장 + relay만 수행 (변환 없음)
+- 클라가 `pendingDeltasRef` 큐 보유 → 원격 ops 도착 시 pending 각 항목에 대해 transform 누적 → 변환된 ops를 quill에 적용
+- Tie-break: 작은 userId가 priority — 모든 클라가 동일 규칙으로 수렴 보장
+- 자신의 echo 수신 시 pending FIFO head pop만 수행 (이미 로컬에 반영됨)
+- 재연결 시 pending 큐 비움 (서버 인증 여부 불명)
+
+**구현 파일:**
+
+| 파일 | 내용 |
+|------|------|
+| `dto/DeltaBroadcast.java` | `clientSeqNo` echo 필드 추가 (자신의 ack 식별용) |
+| `service/EditorServiceImpl.java` | `DeltaBroadcast.of(log, message.clientSeqNo())` 호출 변경 |
+| `test/service/EditorServiceImplTest.java` | echo 검증 케이스 1개 추가 (총 7개) |
+| `tech-sync-backend/websocket.md` | Phase 1(클라 OT) / Phase 2(서버 OT, 발표 후) 로드맵 명시 |
+| `src/hooks/useEditorSocket.js` | pending 큐 + transform 통합, sendDelta 시그니처 단순화 (clientSeqNo 자동 추적) |
+| `src/pages/WorkspaceEditorPage.jsx` | `seqNo` state 제거, `sendDelta(ops, seqNo)` → `sendDelta(ops)` |
+
+**시연 검증 완료 (2026-05-26):**
+- ✅ 같은 위치 동시 입력 → 양쪽 화면 동일 순서로 수렴
+- ✅ 다른 위치 동시 입력 → 인덱스 어긋남 없음
+- ✅ 한쪽 5글자 입력 후 다른 쪽 맨 앞에 1글자 삽입 → 5글자가 정확히 1만큼 밀림
+- ✅ 한글 IME + 다른 쪽 영문 동시 입력 (5/11 fix 회귀 없음)
+- ✅ 커서 공유 (5/18 기능 회귀 없음)
+
 ### Phase 4: 프론트엔드 MVP (발표용)
 
 #### 4-1. feature/frontend-mvp ✅ (→ develop merge 완료, PR #8)
@@ -228,10 +263,13 @@
 ### Phase 2: 협업 워크스페이스
 - [x] 2-1. 워크스페이스 CRUD (WORKSPACE, WORKSPACE_MEMBER) — 2026-04-20 완료, 2026-04-23 테스트 추가, PR #6
 - [x] 2-2a. WebSocket 편집 인프라 (DELTA_LOG + STOMP 인증) — 2026-04-27 완료, PR #7
-- [ ] 2-2b. OT 변환 알고리즘 (clientSeqNo 불일치 시 변환)
+- [x] 2-2b. OT 변환 알고리즘 (Phase 1 클라이언트 OT) — 2026-05-26 완료, PR #13
 - [ ] 2-2c. DRAFT_SNAPSHOT 자동저장 (30초)
 - [ ] 2-2d. DRAFT_VERSION 수동 저장
 - [ ] Quill.js 에디터 연동 (프론트엔드)
+
+### 발표 후 (Phase 2 후속)
+- [ ] OT Phase 2: 서버 OT 마이그레이션 — Java로 quill-delta `transform` 포팅 + `EditorServiceImpl.applyDelta`에서 transform 누적 적용 + 클라 transform 루프 비활성화. websocket.md "Phase 2 충돌 해결 전략" 참조. DELTA_LOG 스키마/페이로드 변경 불필요
 
 ### Phase 3: 알림 시스템
 - [ ] Redis Pub/Sub 이벤트 발행
@@ -267,6 +305,9 @@
 | 2026-04-28 | axios 인터셉터에서 401뿐 아니라 403도 토큰 만료로 처리 | Spring Security stateless+JWT 환경에서 401 대신 403을 자주 던짐, _retry 플래그로 무한 루프 방지 |
 | 2026-05-18 | 커서 메시지를 DELTA_LOG에 저장하지 않음 | 휘발성 데이터고 OT 변환과 무관, MongoDB 부하 + seqNo 채번 비용 회피 |
 | 2026-05-18 | CursorBroadcast에 userName 미포함, 프론트가 멤버 목록에서 룩업 | 고빈도 메시지(throttle 80ms)마다 백엔드 User 조회를 피함, WorkspaceDetailResponse가 이미 멤버 이름을 들고 있음 |
+| 2026-05-26 | OT 변환을 Phase 1(클라이언트 OT) → Phase 2(서버 OT) 2단계로 분리 | Java용 quill-delta 호환 transform 라이브러리 부재 + 5/28 발표 D-2. 서버는 채번/저장/relay 구조 그대로 유지하면 DELTA_LOG 스키마/페이로드 변경 없이 Phase 2 전환 가능 |
+| 2026-05-26 | 클라 OT tie-break을 작은 userId priority로 결정 | 모든 클라가 동일한 결정론적 규칙을 사용해야 수렴 보장. 서버 seqNo 기반 tie-break은 pending이 미채번 상태라 불가 |
+| 2026-05-26 | `DeltaBroadcast`에 `clientSeqNo` echo 필드 추가 | 자신의 ack 식별 + Phase 2 마이그레이션 시 서버가 transform 베이스로 활용 가능 (선제적 인터페이스) |
 
 ---
 
