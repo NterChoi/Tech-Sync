@@ -1,0 +1,653 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tech-Sync 중간 발표 — JWT 인증 &amp; 실시간 협업</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/night.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/monokai.css">
+<style>
+  :root {
+    --r-background-color: #1a1a2e;
+    --r-main-color: #e0e0e0;
+    --r-heading-color: #00d2ff;
+    --r-link-color: #00d2ff;
+  }
+  .reveal { font-family: 'Pretendard', 'Apple SD Gothic Neo', sans-serif; }
+  .reveal h1, .reveal h2, .reveal h3 { font-weight: 700; }
+  .reveal h1 { font-size: 2.2em; }
+  .reveal h2 { font-size: 1.5em; color: #00d2ff; }
+  .reveal h3 { font-size: 1.15em; color: #7fdbff; }
+
+  .box { background: rgba(0,210,255,0.08); border-left: 4px solid #00d2ff;
+         padding: 18px 24px; border-radius: 8px; margin: 16px 0; text-align: left; }
+  .box-warn { background: rgba(255,165,0,0.10); border-left: 4px solid #ffa500;
+              padding: 18px 24px; border-radius: 8px; margin: 16px 0; text-align: left; }
+  .box-green { background: rgba(0,255,136,0.08); border-left: 4px solid #00ff88;
+               padding: 18px 24px; border-radius: 8px; margin: 16px 0; text-align: left; }
+
+  .flow { display: flex; align-items: center; justify-content: center; gap: 12px;
+          flex-wrap: wrap; margin: 24px 0; }
+  .flow-box { background: rgba(0,210,255,0.15); border: 1px solid #00d2ff;
+              padding: 12px 20px; border-radius: 8px; font-size: 0.65em; text-align: center;
+              min-width: 120px; }
+  .flow-box.highlight { background: rgba(255,165,0,0.2); border-color: #ffa500; color: #ffa500; }
+  .flow-box.green { background: rgba(0,255,136,0.15); border-color: #00ff88; color: #00ff88; }
+  .flow-arrow { font-size: 1.4em; color: #555; }
+
+  .reveal pre { width: 100%; font-size: 0.48em; box-shadow: none; }
+  .reveal pre code { padding: 16px 20px; border-radius: 8px; max-height: 480px; }
+  .reveal code { font-family: 'JetBrains Mono', 'D2Coding', monospace; }
+
+  .reveal table { margin: 16px auto; font-size: 0.6em; border-collapse: collapse; }
+  .reveal table th { background: rgba(0,210,255,0.15); color: #00d2ff; padding: 10px 16px; }
+  .reveal table td { padding: 10px 16px; border-bottom: 1px solid rgba(255,255,255,0.1); }
+
+  .cols { display: flex; gap: 24px; margin: 16px 0; }
+  .cols > div { flex: 1; }
+
+  .small { font-size: 0.55em; color: #888; }
+  .tag { display: inline-block; background: #00d2ff; color: #1a1a2e; padding: 2px 10px;
+         border-radius: 4px; font-size: 0.55em; font-weight: 700; margin: 0 4px; }
+  .tag-orange { background: #ffa500; }
+  .tag-green { background: #00ff88; }
+
+  .arch-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; margin: 20px 0; }
+  .arch-cell { background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.15);
+               border-radius: 8px; padding: 14px; font-size: 0.55em; text-align: center; }
+  .arch-cell.active { border-color: #00d2ff; background: rgba(0,210,255,0.1); }
+
+  em { color: #ffa500; font-style: normal; font-weight: 600; }
+
+  .reveal .slides section { text-align: left; }
+  .reveal .slides section.center-slide { text-align: center; }
+
+  .timeline { position: relative; margin: 20px 0; padding-left: 30px; }
+  .timeline::before { content: ''; position: absolute; left: 8px; top: 0; bottom: 0;
+                      width: 2px; background: #00d2ff; }
+  .timeline-item { position: relative; margin-bottom: 14px; font-size: 0.6em; }
+  .timeline-item::before { content: ''; position: absolute; left: -26px; top: 6px;
+                           width: 10px; height: 10px; border-radius: 50%; background: #00d2ff; }
+  .timeline-item.done::before { background: #00ff88; }
+  .timeline-item.current::before { background: #ffa500; box-shadow: 0 0 8px #ffa500; }
+</style>
+</head>
+<body>
+<div class="reveal">
+<div class="slides">
+
+<!-- 1. TITLE -->
+<section class="center-slide" data-background-gradient="linear-gradient(135deg, #1a1a2e, #16213e)">
+  <h1 style="font-size:2.6em;">Tech-Sync</h1>
+  <p style="font-size:1.1em; color:#7fdbff;">IT 뉴스 큐레이션 &amp; 실시간 협업 플랫폼</p>
+  <br>
+  <p style="font-size:0.7em; color:#888;">중간 발표 — 2026.05.28</p>
+  <p style="font-size:0.65em; color:#666;">Spring Security + JWT 인증 &amp; 추가 개발 현황</p>
+</section>
+
+<!-- 2. AGENDA -->
+<section>
+  <h2>발표 목차</h2>
+  <br>
+  <table>
+    <tr><td><span class="tag">Part 1</span></td><td><strong>JWT 인증 시스템</strong> — 왜 JWT인가, 구조, 핵심 코드, 토큰 갱신</td></tr>
+    <tr><td><span class="tag tag-orange">Part 2</span></td><td><strong>추가 개발 현황</strong> — 실시간 협업 에디터, 자동/수동 저장</td></tr>
+    <tr><td><span class="tag tag-green">Part 3</span></td><td><strong>시연 &amp; 향후 계획</strong></td></tr>
+  </table>
+</section>
+
+<!-- 3. PART 1 TITLE -->
+<section class="center-slide">
+  <p class="tag" style="font-size:0.7em;">Part 1</p>
+  <h1 style="font-size:2em;">JWT 인증 시스템</h1>
+  <p style="color:#7fdbff;">Spring Security + JWT</p>
+</section>
+
+<!-- 4. WHY JWT -->
+<section>
+  <h2>왜 JWT를 선택했는가?</h2>
+  <br>
+  <div class="cols">
+    <div>
+      <h3>Session 방식</h3>
+      <div class="box-warn">
+        <ul style="font-size:0.6em;">
+          <li>서버에 세션 저장 → <em>Scale-out 어려움</em></li>
+          <li>서버 재시작 시 세션 유실</li>
+          <li>서버 간 세션 공유 필요 (Sticky Session)</li>
+          <li>WebSocket 연결 시 세션 전달 복잡</li>
+        </ul>
+      </div>
+    </div>
+    <div>
+      <h3>JWT 방식 ✓</h3>
+      <div class="box-green">
+        <ul style="font-size:0.6em;">
+          <li>서버 무상태(Stateless) → <em>수평 확장 용이</em></li>
+          <li>토큰 자체에 사용자 정보 포함</li>
+          <li>서버 간 공유할 것이 없음</li>
+          <li>HTTP &amp; WebSocket 동일 방식으로 인증</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <br>
+  <div class="box" style="font-size:0.6em;">
+    <strong>Tech-Sync의 핵심 요구사항:</strong> 실시간 협업 에디터 → 다수의 WebSocket 연결 + REST API 동시 처리<br>
+    → <em>Stateless + 토큰 기반 인증</em>이 가장 적합
+  </div>
+</section>
+
+<!-- 5. JWT STRUCTURE -->
+<section>
+  <h2>JWT 토큰의 구조</h2>
+  <br>
+  <div style="text-align:center; font-size:0.7em; margin-bottom:20px;">
+    <code style="color:#ff6b6b;">eyJhbGci...</code><strong style="color:#888;">.</strong><code style="color:#ffd93d;">eyJzdWIi...</code><strong style="color:#888;">.</strong><code style="color:#6bcb77;">SflKxwRJ...</code>
+  </div>
+  <div class="cols">
+    <div>
+      <div style="border-left:4px solid #ff6b6b; padding-left:12px; font-size:0.55em;">
+        <strong style="color:#ff6b6b;">Header</strong><br>
+        알고리즘(HS256)<br>토큰 타입(JWT)
+      </div>
+    </div>
+    <div>
+      <div style="border-left:4px solid #ffd93d; padding-left:12px; font-size:0.55em;">
+        <strong style="color:#ffd93d;">Payload (Claims)</strong><br>
+        sub: userId<br>
+        email: 사용자 이메일<br>
+        iat: 발급 시간<br>
+        exp: 만료 시간
+      </div>
+    </div>
+    <div>
+      <div style="border-left:4px solid #6bcb77; padding-left:12px; font-size:0.55em;">
+        <strong style="color:#6bcb77;">Signature</strong><br>
+        HMAC-SHA로 서명<br>→ 위변조 방지
+      </div>
+    </div>
+  </div>
+  <br>
+  <div class="box" style="font-size:0.55em;">
+    <strong>Tech-Sync 설정:</strong> Access Token <em>30분</em> / Refresh Token <em>7일</em> —
+    짧은 Access로 보안 강화, 긴 Refresh로 사용자 편의 확보
+  </div>
+</section>
+
+<!-- 6. ARCHITECTURE OVERVIEW -->
+<section>
+  <h2>인증 아키텍처 전체 흐름</h2>
+  <br>
+  <div class="flow">
+    <div class="flow-box">Client<br><span class="small">React + Axios</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box highlight">JwtFilter<br><span class="small">토큰 검증</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">SecurityConfig<br><span class="small">인가 확인</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box green">Controller<br><span class="small">비즈니스 로직</span></div>
+  </div>
+  <br>
+  <div class="flow">
+    <div class="flow-box">JwtProvider<br><span class="small">토큰 생성/파싱</span></div>
+    <div class="flow-arrow">↔</div>
+    <div class="flow-box highlight">AuthService<br><span class="small">로그인/회원가입</span></div>
+    <div class="flow-arrow">↔</div>
+    <div class="flow-box" style="border-color:#ff6b6b; color:#ff6b6b;">Redis<br><span class="small">Refresh Token 저장</span></div>
+    <div class="flow-arrow">↔</div>
+    <div class="flow-box">MariaDB<br><span class="small">사용자 정보</span></div>
+  </div>
+  <br>
+  <p style="font-size:0.55em; color:#888; text-align:center;">
+    핵심 클래스 3개: <code>JwtProvider</code> · <code>JwtFilter</code> · <code>SecurityConfig</code>
+  </p>
+</section>
+
+<!-- 7. CODE: JwtProvider -->
+<section>
+  <h2>핵심 코드 ① JwtProvider</h2>
+  <p style="font-size:0.55em; color:#888;">토큰 생성 · 검증 · 파싱을 담당하는 유틸리티 클래스</p>
+  <pre><code class="language-java">@Component
+public class JwtProvider {
+
+    private final SecretKey key;   // HMAC-SHA 서명 키
+    private final long accessExpiration;   // 30분
+    private final long refreshExpiration;  // 7일
+
+    // ── 토큰 생성 ──
+    private String buildToken(Long userId, String email, long expiration) {
+        Date now = new Date();
+        return Jwts.builder()
+                .subject(String.valueOf(userId))  // 사용자 식별
+                .claim("email", email)            // 커스텀 클레임
+                .issuedAt(now)
+                .expiration(new Date(now.getTime() + expiration))
+                .signWith(key)                    // HMAC-SHA 서명
+                .compact();
+    }
+
+    // ── 토큰 검증 ──
+    public boolean isValid(String token) {
+        try {
+            parse(token);   // 서명 + 만료 동시 검증
+            return true;
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+}</code></pre>
+</section>
+
+<!-- 8. CODE: JwtFilter -->
+<section>
+  <h2>핵심 코드 ② JwtFilter</h2>
+  <p style="font-size:0.55em; color:#888;">매 HTTP 요청마다 실행되는 인증 필터</p>
+  <pre><code class="language-java">@Component
+public class JwtFilter extends OncePerRequestFilter {
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain chain) {
+        // 1. Authorization 헤더에서 Bearer 토큰 추출
+        String token = resolveToken(request);
+
+        // 2. 토큰 유효성 검증
+        if (StringUtils.hasText(token) && jwtProvider.isValid(token)) {
+
+            // 3. 토큰에서 사용자 정보 추출
+            Long userId = jwtProvider.getUserId(token);
+            String email = jwtProvider.getEmail(token);
+
+            // 4. SecurityContext에 인증 객체 세팅
+            UsernamePasswordAuthenticationToken authentication =
+                new UsernamePasswordAuthenticationToken(
+                    userId, email, List.of());
+            SecurityContextHolder.getContext()
+                .setAuthentication(authentication);
+        }
+
+        chain.doFilter(request, response);  // 다음 필터로
+    }
+}</code></pre>
+</section>
+
+<!-- 9. CODE: SecurityConfig -->
+<section>
+  <h2>핵심 코드 ③ SecurityConfig</h2>
+  <p style="font-size:0.55em; color:#888;">Spring Security 설정 — 세션 정책, 경로 인가, 필터 체인</p>
+  <pre><code class="language-java">@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http)
+            throws Exception {
+        http
+            // CSRF 비활성화 (JWT 사용 시 불필요)
+            .csrf(csrf -> csrf.disable())
+
+            // 핵심: 세션을 생성하지 않음 → Stateless
+            .sessionManagement(session ->
+                session.sessionCreationPolicy(
+                    SessionCreationPolicy.STATELESS))
+
+            // 경로별 인가 규칙
+            .authorizeHttpRequests(auth -> auth
+                .requestMatchers(
+                    "/api/auth/**",    // 인증 API (로그인/회원가입)
+                    "/api/keywords",   // 키워드 조회
+                    "/ws/**"           // WebSocket 엔드포인트
+                ).permitAll()
+                .anyRequest().authenticated()
+            )
+
+            // JwtFilter를 Spring 기본 필터 앞에 등록
+            .addFilterBefore(jwtFilter,
+                UsernamePasswordAuthenticationFilter.class);
+
+        return http.build();
+    }
+}</code></pre>
+</section>
+
+<!-- 10. LOGIN FLOW -->
+<section>
+  <h2>로그인 → 토큰 발급 흐름</h2>
+  <br>
+  <div class="flow">
+    <div class="flow-box">POST<br>/api/auth/login<br><span class="small">{email, password}</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box highlight">BCrypt<br>비밀번호 검증</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box green">JWT 토큰<br>2개 발급</div>
+  </div>
+  <br>
+  <pre><code class="language-java">// AuthServiceImpl — 로그인 처리
+public AuthResponse login(LoginRequest request) {
+    User user = userRepository.findByEmail(request.email())
+        .orElseThrow(() -> new BusinessException("이메일 또는 비밀번호가 올바르지 않습니다."));
+
+    if (!passwordEncoder.matches(request.password(), user.getPassword()))
+        throw new BusinessException("이메일 또는 비밀번호가 올바르지 않습니다.");
+
+    // Access Token + Refresh Token 발급
+    String accessToken  = jwtProvider.createAccessToken(user.getUserId(), user.getEmail());
+    String refreshToken = jwtProvider.createRefreshToken(user.getUserId(), user.getEmail());
+
+    // Refresh Token → Redis 저장 (TTL 7일)
+    redisTemplate.opsForValue().set(
+        "refresh:" + user.getUserId(), refreshToken,
+        Duration.ofMillis(jwtProvider.getRefreshExpiration()));
+
+    return new AuthResponse(accessToken, refreshToken, user.getUserId(), user.getName());
+}</code></pre>
+</section>
+
+<!-- 11. TOKEN REFRESH -->
+<section>
+  <h2>토큰 갱신 전략</h2>
+  <p style="font-size:0.55em; color:#888;">Access Token 만료 → 자동 갱신 → 사용자는 끊김 없이 사용</p>
+  <br>
+  <div class="flow">
+    <div class="flow-box">API 요청<br><span class="small">만료된 Access Token</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box" style="border-color:#ff6b6b; color:#ff6b6b;">401<br>Unauthorized</div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box highlight">Axios Interceptor<br><span class="small">자동 감지</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box green">POST /auth/refresh<br><span class="small">새 토큰 쌍 수령</span></div>
+  </div>
+  <br>
+  <div class="cols" style="font-size:0.55em;">
+    <div class="box">
+      <strong>프론트엔드 (Axios Interceptor)</strong>
+      <ul>
+        <li>401/403 응답 → Refresh Token으로 재발급 요청</li>
+        <li>동시 다발 요청 시 <em>1회만 refresh</em> (Promise 공유)</li>
+        <li>Refresh도 실패 → 로그인 페이지로 리다이렉트</li>
+      </ul>
+    </div>
+    <div class="box-green">
+      <strong>백엔드 (토큰 로테이션)</strong>
+      <ul>
+        <li>Refresh Token 유효성 + <em>Redis 저장값 일치</em> 확인</li>
+        <li>새 Access + <em>새 Refresh</em> 둘 다 발급</li>
+        <li>이전 Refresh Token은 자동 무효화</li>
+        <li>→ 탈취된 토큰 재사용 차단</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- 12. DESIGN DECISIONS -->
+<section>
+  <h2>설계 포인트 정리</h2>
+  <br>
+  <table>
+    <thead>
+      <tr><th>설계 결정</th><th>선택</th><th>이유</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>세션 관리</td>
+        <td><em>STATELESS</em></td>
+        <td>서버에 상태 저장 X → 수평 확장 가능</td>
+      </tr>
+      <tr>
+        <td>Refresh Token 저장소</td>
+        <td><em>Redis</em></td>
+        <td>빠른 조회 + TTL 자동 만료</td>
+      </tr>
+      <tr>
+        <td>비밀번호 암호화</td>
+        <td><em>BCrypt</em></td>
+        <td>단방향 해시 + Salt → 레인보우 테이블 공격 방지</td>
+      </tr>
+      <tr>
+        <td>토큰 갱신</td>
+        <td><em>Rotation</em></td>
+        <td>Refresh 시 새 토큰 쌍 발급 → 탈취 시 1회만 사용 가능</td>
+      </tr>
+      <tr>
+        <td>서명 알고리즘</td>
+        <td><em>HMAC-SHA</em></td>
+        <td>단일 서버 환경에서 단순하고 빠름</td>
+      </tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- 13. PART 2 TITLE -->
+<section class="center-slide">
+  <p class="tag tag-orange" style="font-size:0.7em;">Part 2</p>
+  <h1 style="font-size:2em;">추가 개발 현황</h1>
+  <p style="color:#7fdbff;">실시간 협업 에디터</p>
+</section>
+
+<!-- 14. REALTIME ARCHITECTURE -->
+<section>
+  <h2>실시간 협업 에디터 아키텍처</h2>
+  <br>
+  <div class="flow">
+    <div class="flow-box">Client A<br><span class="small">Quill Editor</span></div>
+    <div class="flow-arrow">⇄</div>
+    <div class="flow-box highlight" style="min-width:200px;">
+      Spring WebSocket<br>
+      <span class="small">STOMP + JWT 인증<br>Redis SeqNo 채번</span>
+    </div>
+    <div class="flow-arrow">⇄</div>
+    <div class="flow-box">Client B<br><span class="small">Quill Editor</span></div>
+  </div>
+  <div style="text-align:center; margin:12px 0;">
+    <span class="flow-arrow">↓</span>
+  </div>
+  <div class="flow">
+    <div class="flow-box green" style="min-width:160px;">MongoDB<br><span class="small">DeltaLog · Snapshot · Version</span></div>
+    <div class="flow-arrow">↔</div>
+    <div class="flow-box" style="border-color:#ff6b6b; color:#ff6b6b; min-width:120px;">Redis<br><span class="small">SeqNo 채번</span></div>
+  </div>
+  <br>
+  <div class="box" style="font-size:0.55em;">
+    <strong>핵심:</strong> HTTP API와 동일한 JWT를 WebSocket(STOMP)에도 적용 →
+    <code>StompAuthChannelInterceptor</code>가 CONNECT 시 토큰 검증
+  </div>
+</section>
+
+<!-- 15. WEBSOCKET JWT -->
+<section>
+  <h2>WebSocket에도 JWT 인증</h2>
+  <p style="font-size:0.55em; color:#888;">HTTP의 JwtFilter와 같은 역할을 WebSocket에서 수행</p>
+  <pre><code class="language-java">@Component
+public class StompAuthChannelInterceptor implements ChannelInterceptor {
+
+    @Override
+    public Message&lt;?&gt; preSend(Message&lt;?&gt; message, MessageChannel channel) {
+        StompHeaderAccessor accessor = MessageHeaderAccessor
+            .getAccessor(message, StompHeaderAccessor.class);
+
+        // STOMP CONNECT 시에만 인증 수행
+        if (!StompCommand.CONNECT.equals(accessor.getCommand()))
+            return message;
+
+        // Authorization 헤더에서 JWT 추출 → 검증
+        String token = resolveToken(
+            accessor.getFirstNativeHeader("Authorization"));
+        if (token == null || !jwtProvider.isValid(token))
+            throw new MessagingException("STOMP 인증에 실패했습니다.");
+
+        // 인증 성공 → Principal 세팅
+        Long userId = jwtProvider.getUserId(token);
+        accessor.setUser(new UsernamePasswordAuthenticationToken(
+            userId, email, List.of()));
+        return message;
+    }
+}</code></pre>
+</section>
+
+<!-- 16. OT -->
+<section>
+  <h2>동시 편집 충돌 해결 — OT</h2>
+  <p style="font-size:0.55em; color:#888;">Operational Transformation으로 인덱스 충돌 보정</p>
+  <br>
+  <div class="cols">
+    <div class="box-warn" style="font-size:0.55em;">
+      <strong>문제 상황</strong><br><br>
+      User A: 5번 위치에 "가" 삽입<br>
+      User B: 3번 위치에 "나" 삽입<br>
+      <br>
+      → B의 삽입 후 A의 "5번"은 실제로 <em>"6번"</em>이 되어야 함
+    </div>
+    <div class="box-green" style="font-size:0.55em;">
+      <strong>OT 해결</strong><br><br>
+      1. 서버: <em>Redis로 seqNo 채번</em> → 순서 보장<br>
+      2. 클라이언트: pending ops와 remote ops를 <em>transform</em><br>
+      3. Tie-break: userId가 작은 쪽 우선<br>
+      <br>
+      → 모든 클라이언트가 <em>동일한 최종 상태</em>에 수렴
+    </div>
+  </div>
+  <br>
+  <pre><code class="language-javascript">// 클라이언트 OT 핵심 — useEditorSocket.js
+let remoteDelta = new Delta(broadcast.ops);
+for (let i = 0; i < pending.length; i++) {
+    const newRemote = pending[i].transform(remoteDelta, selfHasPriority);
+    pending[i] = remoteDelta.transform(pending[i], !selfHasPriority);
+    remoteDelta = newRemote;
+}
+onRemoteDelta({ ...broadcast, ops: remoteDelta.ops });</code></pre>
+</section>
+
+<!-- 17. CURSOR PRESENCE -->
+<section>
+  <h2>커서 공유 (Cursor Presence)</h2>
+  <br>
+  <div class="flow">
+    <div class="flow-box">User A<br><span class="small">커서 이동</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box highlight">/app/cursor/{wsId}<br><span class="small">STOMP 전송</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box">/topic/.../cursor<br><span class="small">브로드캐스트</span></div>
+    <div class="flow-arrow">→</div>
+    <div class="flow-box green">User B 화면<br><span class="small">커서 표시</span></div>
+  </div>
+  <br>
+  <div class="box" style="font-size:0.55em;">
+    <ul>
+      <li>다른 사용자의 <em>커서 위치를 실시간</em>으로 화면에 표시</li>
+      <li>Google Docs 스타일의 협업 경험 구현</li>
+      <li>워크스페이스 멤버 권한 체크 후 브로드캐스트</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 18. DATA SAFETY -->
+<section>
+  <h2>데이터 안전 전략</h2>
+  <p style="font-size:0.55em; color:#888;">자동 저장 + 수동 버전으로 데이터 유실 방지</p>
+  <br>
+  <div class="cols">
+    <div class="box" style="font-size:0.55em;">
+      <strong style="color:#00d2ff;">DRAFT_SNAPSHOT</strong><br>
+      <span class="tag">자동 저장</span><br><br>
+      <ul>
+        <li><em>30초마다</em> 현재 에디터 내용 저장</li>
+        <li>워크스페이스당 1개 (덮어쓰기)</li>
+        <li>에디터 진입 시 자동 복원</li>
+        <li>브라우저 종료/새로고침 대비</li>
+      </ul>
+    </div>
+    <div class="box-green" style="font-size:0.55em;">
+      <strong style="color:#00ff88;">DRAFT_VERSION</strong><br>
+      <span class="tag tag-green">수동 저장</span><br><br>
+      <ul>
+        <li>사용자가 <em>"저장" 버튼</em> 클릭 시 생성</li>
+        <li>버전 번호 자동 증가</li>
+        <li>MAJOR / MINOR 구분</li>
+        <li>버전 이력 조회 + 특정 버전 복원</li>
+      </ul>
+    </div>
+  </div>
+  <br>
+  <p style="font-size:0.5em; color:#888; text-align:center;">
+    저장소: MongoDB — Quill Delta(JSON) 형태로 문서 내용을 저장
+  </p>
+</section>
+
+<!-- 19. TECH STACK -->
+<section>
+  <h2>기술 스택 요약</h2>
+  <br>
+  <div class="arch-grid">
+    <div class="arch-cell active">
+      <strong style="color:#00d2ff;">Backend</strong><br><br>
+      Spring Boot 3<br>
+      Spring Security<br>
+      Spring WebSocket<br>
+      JPA + Hibernate
+    </div>
+    <div class="arch-cell active">
+      <strong style="color:#00d2ff;">Frontend</strong><br><br>
+      React<br>
+      Quill Editor<br>
+      STOMP.js + SockJS<br>
+      Axios
+    </div>
+    <div class="arch-cell active">
+      <strong style="color:#00d2ff;">Infra / DB</strong><br><br>
+      MariaDB (사용자, 워크스페이스)<br>
+      MongoDB (문서, 델타로그)<br>
+      Redis (토큰, SeqNo)<br>
+      Docker Compose
+    </div>
+  </div>
+</section>
+
+<!-- 20. PART 3 TITLE -->
+<section class="center-slide">
+  <p class="tag tag-green" style="font-size:0.7em;">Part 3</p>
+  <h1 style="font-size:2em;">진행 현황 &amp; 향후 계획</h1>
+</section>
+
+<!-- 21. TIMELINE -->
+<section>
+  <h2>개발 진행 현황</h2>
+  <br>
+  <div class="timeline">
+    <div class="timeline-item done"><strong style="color:#00ff88;">설계</strong> — ERD, 아키텍처, WBS 수립 <span class="small">(3/4 – 4/4)</span></div>
+    <div class="timeline-item done"><strong style="color:#00ff88;">개발환경 세팅</strong> — Docker Compose, DB, Spring Boot <span class="small">(3/25 – 4/4)</span></div>
+    <div class="timeline-item done"><strong style="color:#00ff88;">회원관리</strong> — JWT 인증, 회원가입/로그인/토큰 갱신 <span class="small">(4/5 – 4/18)</span></div>
+    <div class="timeline-item done"><strong style="color:#00ff88;">뉴스 피드</strong> — 네이버 뉴스 API 연동, 키워드 구독 <span class="small">(4/21 – 5/9)</span></div>
+    <div class="timeline-item current"><strong style="color:#ffa500;">협업 워크스페이스</strong> — WebSocket, OT, 자동/수동 저장 <span class="small">(5/12 – 5/30)</span></div>
+    <div class="timeline-item"><strong>알림 + 마이페이지</strong> <span class="small">(6/2 – 6/6)</span></div>
+    <div class="timeline-item"><strong>배포 및 테스트</strong> <span class="small">(6/7 – 6/11 최종 평가)</span></div>
+  </div>
+</section>
+
+<!-- 22. CLOSING -->
+<section class="center-slide" data-background-gradient="linear-gradient(135deg, #1a1a2e, #16213e)">
+  <h1 style="font-size:2.2em;">감사합니다</h1>
+  <br>
+  <p style="font-size:0.8em; color:#7fdbff;">Q &amp; A</p>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/highlight/highlight.js"></script>
+<script>
+Reveal.initialize({
+  hash: true,
+  slideNumber: 'c/t',
+  width: 1280,
+  height: 720,
+  margin: 0.08,
+  transition: 'slide',
+  plugins: [RevealHighlight],
+});
+</script>
+</body>
+</html>
