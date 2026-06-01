@@ -14,8 +14,10 @@
 - 5/28 발표 대비 작업(2-2c/2-2d) 완료, 발표 후 정리 커밋 2개(IME 가드 픽스 / 회원가입 흐름 변경)
 
 ### 이어받기 메모 (2026-06-01, 윈도우 환경)
-- 6/1 미커밋 변경 2개 정리 완료 → 워킹트리 클린 (untracked: docs xlsx 산출물만)
-- 다음 착수: 배포 인프라 (백엔드 Dockerfile + application-prod.yml) — 아래 "배포 스프린트" 참조
+- 6/1 하루에 배포 인프라(Phase 6) + Phase 3 SSE 알림 완료 — 계획 대비 선행
+- 배포 인프라: Docker 구성 + 로컬 prod 스택 검증 통과 (EC2 실배포만 잔여)
+- Phase 3 SSE 알림: E2E 검증까지 완료 (PR `16beba2`)
+- 다음 착수: Phase 5 기본 마이페이지 (6/7 예정) 또는 EC2 실배포
 
 ---
 
@@ -336,11 +338,17 @@
 ### 발표 후 (Phase 2 후속)
 - [ ] OT Phase 2: 서버 OT 마이그레이션 — Java로 quill-delta `transform` 포팅 + `EditorServiceImpl.applyDelta`에서 transform 누적 적용 + 클라 transform 루프 비활성화. websocket.md "Phase 2 충돌 해결 전략" 참조. DELTA_LOG 스키마/페이로드 변경 불필요
 
-### Phase 3: 알림 시스템 (배포 스프린트 6/5~6/6)
-- [ ] Redis Pub/Sub 이벤트 발행
-- [ ] SSE 실시간 알림 (/api/alarm/subscribe)
-- [ ] 프론트 useSSE.js 훅 + 알림 벨/리스트 UI
+### Phase 3: 알림 시스템 (배포 스프린트) ✅ 2026-06-01 완료 (PR `16beba2`)
+- [x] Redis Pub/Sub 이벤트 발행 ("alarm" 채널)
+- [x] SSE 실시간 알림 (GET /api/alarm/subscribe, SseEmitter)
+- [x] MongoDB ALARM 영속화 + 목록/안읽음수/읽음 처리 API
+- [x] 프론트 useSSE.js 훅(fetch-event-source) + Layout 알림 벨/배지/드롭다운
+- [x] 멤버 초대 시 알림 트리거 (WorkspaceServiceImpl.inviteMember)
 - [~] ~~Web Push (VAPID)~~ — **컷** (배포 스프린트 범위 제외)
+
+> 검증: 컴파일+단위테스트 통과, prod 스택 nginx 경유 2계정 E2E(A 초대→B SSE 실시간 수신
+> +MongoDB 목록/안읽음 반영) 통과. SSE는 EventSource 헤더 제약 때문에 fetch-event-source로
+> Bearer 전송(SecurityConfig 무수정). nginx `/api/alarm/subscribe` 버퍼링 off로 즉시 flush.
 
 ### Phase 5: 마이페이지 (배포 스프린트 6/7)
 - [ ] 내 정보 조회/수정 API + 페이지
@@ -393,6 +401,9 @@
 | 2026-06-01 | 배포 파이프라인 선구축 후 기능 증분 배포 전략 | 배포를 6/10에 처음 시도하면 사고. 현재 완성 앱을 6/4까지 EC2에 먼저 올려 문제를 일찍 노출 |
 | 2026-06-01 | prod ddl-auto는 `${DDL_AUTO:validate}`, 첫 배포만 update | 첫 배포 시 빈 DB라 validate 부팅 실패. 환경변수 토글로 코드 수정 없이 첫 기동만 스키마 생성 후 validate 복귀 |
 | 2026-06-01 | 프론트는 nginx same-origin 서빙 (CORS 불필요) | axios `/api`·SockJS `/ws` 모두 상대경로 → 단일 도메인 리버스 프록시면 프론트 코드 변경 0, CORS 설정 불필요 |
+| 2026-06-01 | SSE 인증을 fetch-event-source(Bearer 헤더)로 | 브라우저 기본 EventSource는 Authorization 헤더 미지원. 쿼리 토큰은 nginx 로그 노출 + SecurityConfig 수정 필요 → 라이브러리로 헤더 전송이 기존 JWT 모델과 일관 |
+| 2026-06-01 | 알림을 MongoDB ALARM에 영속화 | 새로고침 후에도 벨 목록/안읽음 배지 유지 필요. Quill 외 JSON성 데이터도 MongoDB로 모으는 기존 기조와 일치 |
+| 2026-06-01 | 알림에 Redis Pub/Sub 경유 (단일 인스턴스에도) | architecture.md 설계·발표 내러티브 유지 + 다중 인스턴스 확장 시 SSE emitter가 인스턴스-로컬이라 Pub/Sub로 fan-out 필요 |
 | 2026-05-26 | `DeltaBroadcast`에 `clientSeqNo` echo 필드 추가 | 자신의 ack 식별 + Phase 2 마이그레이션 시 서버가 transform 베이스로 활용 가능 (선제적 인터페이스) |
 
 ---
