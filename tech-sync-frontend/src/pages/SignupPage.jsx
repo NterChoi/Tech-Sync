@@ -11,11 +11,9 @@ import {
   TextField,
   Typography,
 } from '@mui/material';
-import { useAuth } from '../store/AuthContext';
 import * as authApi from '../api/auth';
 
 export default function SignupPage() {
-  const { signIn } = useAuth();
   const navigate = useNavigate();
 
   const [email, setEmail] = useState('');
@@ -30,9 +28,7 @@ export default function SignupPage() {
     setSubmitting(true);
     try {
       await authApi.signup({ email, password, name });
-      const tokens = await authApi.login({ email, password });
-      signIn(tokens);
-      navigate('/feed', { replace: true });
+      navigate('/login', { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || '회원가입에 실패했습니다.');
     } finally {
