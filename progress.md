@@ -8,14 +8,54 @@
 
 ## 현재 상태
 
-- 마지막 업데이트: 2026-05-26
-- 현재 브랜치: `develop` (DRAFT_VERSION 머지 완료, HEAD `c7b8a4a`)
-- **5/28 3차 발표 대비 작업 완료** (2-2c + 2-2d)
-- 다음 작업: Phase 2 OT 서버 마이그레이션 (발표 후)
+- 마지막 업데이트: 2026-06-01
+- 현재 브랜치: `develop` (HEAD `78679a8`)
+- **🚀 배포 스프린트 진입 (목표: 2026-06-11 EC2 최종 배포)**
+- 5/28 발표 대비 작업(2-2c/2-2d) 완료, 발표 후 정리 커밋 2개(IME 가드 픽스 / 회원가입 흐름 변경)
 
-### 이어받기 메모 (2026-05-26, 맥북 환경)
-- 2-2c DRAFT_SNAPSHOT + 2-2d DRAFT_VERSION 모두 머지 완료
-- `gh auth login` 미완료 — PR은 웹에서 수동 머지 중
+### 이어받기 메모 (2026-06-01, 윈도우 환경)
+- 6/1 미커밋 변경 2개 정리 완료 → 워킹트리 클린 (untracked: docs xlsx 산출물만)
+- 다음 착수: 배포 인프라 (백엔드 Dockerfile + application-prod.yml) — 아래 "배포 스프린트" 참조
+
+---
+
+## 🚀 배포 스프린트 (2026-06-01 → 06-11)
+
+> 전략: **배포 파이프라인을 먼저 띄우고 기능을 증분 배포로 얹는다.** 배포 인프라가 0인 상태라
+> 이것이 최대 리스크 → 현재 완성 앱을 6/4까지 EC2에 먼저 올려(1차 배포 리허설) 문제를 일찍 노출시킨다.
+
+### 확정된 범위 결정 (2026-06-01)
+- **배포 대상: 클라우드 VM (AWS EC2)** — Docker 기반
+- **Phase 3 알림: SSE 실시간 알림만** (Redis Pub/Sub + SseEmitter). Web Push(VAPID)는 **컷**
+- **마이페이지: 기본 범위** (내 정보 조회/수정 + 구독 키워드 관리)
+- **컷(의도적 제외)**: Web Push, OT Phase 2 서버 마이그레이션, 키워드 구독 별도 페이지
+
+### 잔여 작업 4개
+| 구분 | 항목 | 상태 |
+|------|------|------|
+| 🔴 배포 인프라 | 백엔드 Dockerfile, 프론트 빌드+nginx, application-prod.yml, prod compose, EC2 프로비저닝 | 0% |
+| 🟡 기능 | Phase 3 SSE 알림 (Redis Pub/Sub + SSE) | 0% |
+| 🟡 기능 | 기본 마이페이지 | 0% |
+| 🟢 안정화 | 전 기능 E2E 통합 테스트 + 버그픽스 | — |
+
+### 일자별 계획
+| 날짜 | 작업 | 산출물/목표 |
+|------|------|------|
+| 6/1 (일) | 미커밋 정리 + 계획 기록 | ✅ 워킹트리 클린, progress 갱신 |
+| 6/2~6/4 (월~수) | 배포 인프라 + **1차 배포 리허설** | 현재 기능 그대로 EC2 동작 |
+| 6/5~6/6 (목~금) | Phase 3 SSE 알림 | Redis Pub/Sub+SSE+useSSE 훅+알림 UI, 증분 배포 |
+| 6/7 (토) | 기본 마이페이지 | 내정보/키워드 관리, 증분 배포 |
+| 6/8 (일) | 통합 테스트 라운드 1 | EC2 전 시나리오 E2E + 버그 목록 |
+| 6/9 (월) | 안정화 라운드 2 | 버그픽스, 프로드 특이사항 점검 |
+| 6/10 (화) | 예비일 / 코드 동결 | 버퍼 + 문서 정리 + 배포 리허설 |
+| 6/11 (수) | 최종 배포 & 제출 | 프로덕션 배포 + 헬스체크 |
+
+### 프로덕션 전환 함정 (착수 전 체크)
+1. **Vite 프록시 소멸** — dev는 8080 프록시로 CORS 우회. 프로드는 nginx 리버스 프록시 or 백엔드 CORS 설정
+2. **SSE** — nginx `proxy_buffering off` + 긴 타임아웃 필요
+3. **WebSocket/STOMP** — nginx `Upgrade` 헤더, HTTPS면 `wss://`. 프론트 소켓 URL 하드코딩 여부 확인
+4. **시크릿** — `.env`는 커밋 금지 유지, EC2엔 별도 주입
+5. **`ddl-auto`** — 프로드는 `validate`/`none` (update 금지)
 
 ---
 
@@ -296,10 +336,22 @@
 ### 발표 후 (Phase 2 후속)
 - [ ] OT Phase 2: 서버 OT 마이그레이션 — Java로 quill-delta `transform` 포팅 + `EditorServiceImpl.applyDelta`에서 transform 누적 적용 + 클라 transform 루프 비활성화. websocket.md "Phase 2 충돌 해결 전략" 참조. DELTA_LOG 스키마/페이로드 변경 불필요
 
-### Phase 3: 알림 시스템
+### Phase 3: 알림 시스템 (배포 스프린트 6/5~6/6)
 - [ ] Redis Pub/Sub 이벤트 발행
 - [ ] SSE 실시간 알림 (/api/alarm/subscribe)
-- [ ] Web Push (VAPID) — 브라우저 미연결 시
+- [ ] 프론트 useSSE.js 훅 + 알림 벨/리스트 UI
+- [~] ~~Web Push (VAPID)~~ — **컷** (배포 스프린트 범위 제외)
+
+### Phase 5: 마이페이지 (배포 스프린트 6/7)
+- [ ] 내 정보 조회/수정 API + 페이지
+- [ ] 구독 키워드 관리
+
+### Phase 6: 배포 인프라 (배포 스프린트 6/2~6/4, 6/9~6/11)
+- [ ] 백엔드 Dockerfile (gradle build → JRE 17 슬림)
+- [ ] 프론트 vite build → nginx 정적 서빙 + /api·/ws 리버스 프록시
+- [ ] application-prod.yml (시크릿 환경변수화, ddl-auto validate)
+- [ ] docker-compose.prod.yml (앱 + DB 3종 + nginx)
+- [ ] EC2 프로비저닝 + 1차 배포 리허설 (6/4)
 
 ### Phase 4: 프론트엔드 MVP (발표용 — 4/30 발표)
 - [x] React 프로젝트 초기 설정 (Vite + MUI) — 2026-04-27, PR #8
@@ -332,6 +384,8 @@
 | 2026-05-18 | CursorBroadcast에 userName 미포함, 프론트가 멤버 목록에서 룩업 | 고빈도 메시지(throttle 80ms)마다 백엔드 User 조회를 피함, WorkspaceDetailResponse가 이미 멤버 이름을 들고 있음 |
 | 2026-05-26 | OT 변환을 Phase 1(클라이언트 OT) → Phase 2(서버 OT) 2단계로 분리 | Java용 quill-delta 호환 transform 라이브러리 부재 + 5/28 발표 D-2. 서버는 채번/저장/relay 구조 그대로 유지하면 DELTA_LOG 스키마/페이로드 변경 없이 Phase 2 전환 가능 |
 | 2026-05-26 | 클라 OT tie-break을 작은 userId priority로 결정 | 모든 클라가 동일한 결정론적 규칙을 사용해야 수렴 보장. 서버 seqNo 기반 tie-break은 pending이 미채번 상태라 불가 |
+| 2026-06-01 | 배포 스프린트 범위에서 Web Push/OT Phase 2/키워드 별도 페이지 컷 | 6/11 EC2 배포 마감 우선. 배포 인프라가 0이라 이것이 최대 리스크 → 기능 욕심보다 배포 안정화에 일정 집중 |
+| 2026-06-01 | 배포 파이프라인 선구축 후 기능 증분 배포 전략 | 배포를 6/10에 처음 시도하면 사고. 현재 완성 앱을 6/4까지 EC2에 먼저 올려 문제를 일찍 노출 |
 | 2026-05-26 | `DeltaBroadcast`에 `clientSeqNo` echo 필드 추가 | 자신의 ack 식별 + Phase 2 마이그레이션 시 서버가 transform 베이스로 활용 가능 (선제적 인터페이스) |
 
 ---
