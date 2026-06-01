@@ -247,7 +247,7 @@ export default function WorkspaceEditorPage() {
   }, [sendCursor, ws]);
 
   useEffect(() => {
-    if (!quillRef.current || !connected) return undefined;
+    if (!connected) return undefined;
     const timer = setInterval(() => {
       const quill = quillRef.current;
       if (!quill) return;
