@@ -347,11 +347,16 @@
 - [ ] 구독 키워드 관리
 
 ### Phase 6: 배포 인프라 (배포 스프린트 6/2~6/4, 6/9~6/11)
-- [ ] 백엔드 Dockerfile (gradle build → JRE 17 슬림)
-- [ ] 프론트 vite build → nginx 정적 서빙 + /api·/ws 리버스 프록시
-- [ ] application.yml에 prod 프로필 추가 (로깅↓, `ddl-auto: ${DDL_AUTO:validate}` — 첫 배포만 DDL_AUTO=update)
-- [ ] docker-compose.prod.yml (앱 + DB 3종 + nginx)
-- [ ] EC2 프로비저닝 + 1차 배포 리허설 (6/4)
+- [x] 백엔드 Dockerfile (멀티스테이지 gradle→JRE17, bootJar) — 2026-06-01, PR `39186c5`
+- [x] 프론트 Dockerfile + nginx.conf (SPA + /api·/ws 프록시, SSE 버퍼링 off) — 2026-06-01
+- [x] application.yml prod 프로필 (`ddl-auto: ${DDL_AUTO:validate}`, 로깅↓) — 2026-06-01
+- [x] docker-compose.prod.yml (앱2 + DB3, 헬스체크 depends_on) — 2026-06-01
+- [x] **로컬 prod 스택 검증** — 격리 프로젝트로 기동, nginx(80) 경유 SPA/회원가입/로그인/인증API/WebSocket 전부 통과 (2026-06-01)
+- [ ] EC2 프로비저닝 + 1차 배포 리허설 (docs/deploy.md 절차대로)
+
+> 검증 중 발견: 플레이스홀더 JWT_SECRET이 하이픈 포함 시 Base64 디코딩 실패(`Illegal base64 character`).
+> → JWT_SECRET은 `openssl rand -base64 48` 형태의 Base64여야 함 (.env.prod.example에 명시).
+> 로컬/dev 스택과 container_name이 충돌하므로 prod compose에서 container_name 제거 + 검증은 `-p` 격리.
 
 ### Phase 4: 프론트엔드 MVP (발표용 — 4/30 발표)
 - [x] React 프로젝트 초기 설정 (Vite + MUI) — 2026-04-27, PR #8
