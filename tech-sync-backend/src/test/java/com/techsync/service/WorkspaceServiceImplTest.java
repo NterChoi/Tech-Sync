@@ -46,6 +46,9 @@ class WorkspaceServiceImplTest {
     @Mock
     private UserRepository userRepository;
 
+    @Mock
+    private AlarmService alarmService;
+
     @InjectMocks
     private WorkspaceServiceImpl workspaceService;
 

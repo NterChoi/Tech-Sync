@@ -24,6 +24,7 @@ public class WorkspaceServiceImpl implements WorkspaceService {
     private final WorkspaceRepository workspaceRepository;
     private final WorkspaceMemberRepository workspaceMemberRepository;
     private final UserRepository userRepository;
+    private final AlarmService alarmService;
 
     @Override
     @Transactional
@@ -153,6 +154,15 @@ public class WorkspaceServiceImpl implements WorkspaceService {
                         .role(role)
                         .build()
         );
+
+        String inviterName = userRepository.findById(userId)
+                .map(User::getName)
+                .orElse("누군가");
+        alarmService.notify(
+                targetUser.getUserId(),
+                "WORKSPACE_INVITE",
+                inviterName + "님이 '" + workspace.getWorkspaceName() + "' 워크스페이스에 초대했습니다.",
+                workspaceId);
 
         return MemberResponse.of(member, targetUser.getName(), targetUser.getEmail());
     }
