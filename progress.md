@@ -17,7 +17,9 @@
 - 6/1 하루에 배포 인프라(Phase 6) + Phase 3 SSE 알림 완료 — 계획 대비 선행
 - 배포 인프라: Docker 구성 + 로컬 prod 스택 검증 통과 (EC2 실배포만 잔여)
 - Phase 3 SSE 알림: E2E 검증까지 완료 (PR `16beba2`)
-- 다음 착수: Phase 5 기본 마이페이지 (6/7 예정) 또는 EC2 실배포
+- **다음 착수(확정): Phase 5 기본 마이페이지** — 내 정보 조회/수정 + 구독 키워드 관리
+  - 시작 전 확인: 기존 User 조회/수정 API 유무 점검(없으면 GET/PUT /api/users/me 추가), 키워드 구독은 KeywordSubscribeController 재사용 가능 여부 확인
+  - 그 다음: EC2 실배포(docs/deploy.md) → 통합 테스트 → 6/11 최종 배포
 
 ---
 
