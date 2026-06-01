@@ -349,7 +349,7 @@
 ### Phase 6: 배포 인프라 (배포 스프린트 6/2~6/4, 6/9~6/11)
 - [ ] 백엔드 Dockerfile (gradle build → JRE 17 슬림)
 - [ ] 프론트 vite build → nginx 정적 서빙 + /api·/ws 리버스 프록시
-- [ ] application-prod.yml (시크릿 환경변수화, ddl-auto validate)
+- [ ] application.yml에 prod 프로필 추가 (로깅↓, `ddl-auto: ${DDL_AUTO:validate}` — 첫 배포만 DDL_AUTO=update)
 - [ ] docker-compose.prod.yml (앱 + DB 3종 + nginx)
 - [ ] EC2 프로비저닝 + 1차 배포 리허설 (6/4)
 
@@ -386,6 +386,8 @@
 | 2026-05-26 | 클라 OT tie-break을 작은 userId priority로 결정 | 모든 클라가 동일한 결정론적 규칙을 사용해야 수렴 보장. 서버 seqNo 기반 tie-break은 pending이 미채번 상태라 불가 |
 | 2026-06-01 | 배포 스프린트 범위에서 Web Push/OT Phase 2/키워드 별도 페이지 컷 | 6/11 EC2 배포 마감 우선. 배포 인프라가 0이라 이것이 최대 리스크 → 기능 욕심보다 배포 안정화에 일정 집중 |
 | 2026-06-01 | 배포 파이프라인 선구축 후 기능 증분 배포 전략 | 배포를 6/10에 처음 시도하면 사고. 현재 완성 앱을 6/4까지 EC2에 먼저 올려 문제를 일찍 노출 |
+| 2026-06-01 | prod ddl-auto는 `${DDL_AUTO:validate}`, 첫 배포만 update | 첫 배포 시 빈 DB라 validate 부팅 실패. 환경변수 토글로 코드 수정 없이 첫 기동만 스키마 생성 후 validate 복귀 |
+| 2026-06-01 | 프론트는 nginx same-origin 서빙 (CORS 불필요) | axios `/api`·SockJS `/ws` 모두 상대경로 → 단일 도메인 리버스 프록시면 프론트 코드 변경 0, CORS 설정 불필요 |
 | 2026-05-26 | `DeltaBroadcast`에 `clientSeqNo` echo 필드 추가 | 자신의 ack 식별 + Phase 2 마이그레이션 시 서버가 transform 베이스로 활용 가능 (선제적 인터페이스) |
 
 ---
