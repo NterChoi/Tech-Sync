@@ -78,3 +78,22 @@ logging:
   level:
     org.hibernate.SQL: DEBUG
     org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+
+---
+# ── prod 프로필 (EC2 배포) ────────────────────────────────────
+# 첫 배포 시에만 환경변수 DDL_AUTO=update 로 스키마를 생성하고,
+# 이후 배포부터는 환경변수를 제거하여 기본값 validate 로 동작시킨다.
+spring:
+  config:
+    activate:
+      on-profile: prod
+  jpa:
+    hibernate:
+      ddl-auto: ${DDL_AUTO:validate}
+    show-sql: false
+
+logging:
+  level:
+    root: INFO
+    com.techsync: INFO
+    org.springframework.web.socket: WARN
