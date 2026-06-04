@@ -29,6 +29,7 @@ const navItems = [
   { to: '/feed', label: '뉴스 피드' },
   { to: '/scraps', label: '내 스크랩' },
   { to: '/workspaces', label: '워크스페이스' },
+  { to: '/mypage', label: '마이페이지' },
 ];
 
 export default function Layout() {

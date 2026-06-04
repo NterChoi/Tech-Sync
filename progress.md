@@ -8,18 +8,20 @@
 
 ## 현재 상태
 
-- 마지막 업데이트: 2026-06-01
-- 현재 브랜치: `develop` (HEAD `78679a8`)
+- 마지막 업데이트: 2026-06-04
+- 현재 브랜치: `develop`
 - **🚀 배포 스프린트 진입 (목표: 2026-06-11 EC2 최종 배포)**
 - 5/28 발표 대비 작업(2-2c/2-2d) 완료, 발표 후 정리 커밋 2개(IME 가드 픽스 / 회원가입 흐름 변경)
 
-### 이어받기 메모 (2026-06-01, 윈도우 환경)
-- 6/1 하루에 배포 인프라(Phase 6) + Phase 3 SSE 알림 완료 — 계획 대비 선행
-- 배포 인프라: Docker 구성 + 로컬 prod 스택 검증 통과 (EC2 실배포만 잔여)
-- Phase 3 SSE 알림: E2E 검증까지 완료 (PR `16beba2`)
-- **다음 착수(확정): Phase 5 기본 마이페이지** — 내 정보 조회/수정 + 구독 키워드 관리
-  - 시작 전 확인: 기존 User 조회/수정 API 유무 점검(없으면 GET/PUT /api/users/me 추가), 키워드 구독은 KeywordSubscribeController 재사용 가능 여부 확인
-  - 그 다음: EC2 실배포(docs/deploy.md) → 통합 테스트 → 6/11 최종 배포
+### 이어받기 메모 (2026-06-04, 윈도우 환경)
+- 6/4 Phase 5 기본 마이페이지 완료 (백엔드 내 정보 API + 프론트 페이지)
+  - 백엔드: `GET/PUT /api/users/me` 신규 (UserController/Service/Impl + DTO 2개 + User.updateName), 단위 테스트 2개 통과
+  - 키워드 구독은 기존 `KeywordSubscribeController` 그대로 재사용 (백엔드 추가 0)
+  - 프론트: `MyPage.jsx`(내 정보 수정 + 추천 키워드 칩 토글) + `api/users.js`, AuthContext `updateUser`로 AppBar 인사말 즉시 반영, `/mypage` 라우트/메뉴 추가
+  - 비밀번호 변경은 의도적 컷 (기본 범위 충실)
+  - 검증: 백엔드 compileJava+test 통과, 프론트 `npm run build` 통과. **수동 E2E(로컬 기동)는 미실시**
+- **다음 착수: EC2 실배포(docs/deploy.md) 1차 리허설** → 통합 테스트 → 6/11 최종 배포
+  - 6/1에 배포 인프라(Phase 6) + Phase 3 SSE 알림은 이미 완료 (로컬 prod 스택 검증까지)
 
 ---
 
@@ -39,7 +41,7 @@
 |------|------|------|
 | 🔴 배포 인프라 | 백엔드 Dockerfile, 프론트 빌드+nginx, application-prod.yml, prod compose, EC2 프로비저닝 | 0% |
 | 🟡 기능 | Phase 3 SSE 알림 (Redis Pub/Sub + SSE) | 0% |
-| 🟡 기능 | 기본 마이페이지 | 0% |
+| 🟡 기능 | 기본 마이페이지 | ✅ 2026-06-04 완료 |
 | 🟢 안정화 | 전 기능 E2E 통합 테스트 + 버그픽스 | — |
 
 ### 일자별 계획
@@ -352,9 +354,28 @@
 > +MongoDB 목록/안읽음 반영) 통과. SSE는 EventSource 헤더 제약 때문에 fetch-event-source로
 > Bearer 전송(SecurityConfig 무수정). nginx `/api/alarm/subscribe` 버퍼링 off로 즉시 flush.
 
-### Phase 5: 마이페이지 (배포 스프린트 6/7)
-- [ ] 내 정보 조회/수정 API + 페이지
-- [ ] 구독 키워드 관리
+### Phase 5: 마이페이지 (배포 스프린트) ✅ 2026-06-04 완료
+- [x] 내 정보 조회/수정 API (`GET/PUT /api/users/me`) + 마이페이지
+- [x] 구독 키워드 관리 (기존 `/api/keywords` API 재사용, 추천 칩 토글)
+- [~] ~~비밀번호 변경~~ — **컷** (기본 범위 외)
+
+**구현 파일:**
+
+| 파일 | 내용 |
+|------|------|
+| `domain/User.java` | `updateName()` 메서드 추가 |
+| `dto/UserResponse.java` / `UpdateUserRequest.java` | 응답/요청 DTO (이름 `@NotBlank`, `@Size(max=50)`) |
+| `service/UserService.java` / `UserServiceImpl.java` | `getMe()`, `updateMe()` (이름 변경) |
+| `controller/UserController.java` | `GET/PUT /api/users/me` (`@AuthenticationPrincipal Long userId`) |
+| `test/service/UserServiceImplTest.java` | 단위 테스트 2개 (정상 수정 / 사용자 없음) |
+| `src/api/users.js` | `getMe()`, `updateMe()` |
+| `src/pages/MyPage.jsx` | 내 정보 수정 폼 + 추천 키워드 구독 칩 토글 |
+| `src/store/AuthContext.jsx` | `updateUser()` 추가 (이름 변경 시 AppBar 즉시 갱신) |
+| `src/App.jsx` / `src/components/Layout.jsx` | `/mypage` 라우트 + 메뉴 추가 |
+
+**설계 메모:**
+- 키워드 구독 상태 매칭은 `keywordName` 기준 (추천=KeywordMaster PK, 내 키워드=Keyword PK로 id가 달라 이름으로 매칭, 구독/해제 호출은 추천 칩의 keywordMasterId 사용)
+- SecurityConfig 변경 불필요 (`/api/users/me`는 `anyRequest().authenticated()`에 포함)
 
 ### Phase 6: 배포 인프라 (배포 스프린트 6/2~6/4, 6/9~6/11)
 - [x] 백엔드 Dockerfile (멀티스테이지 gradle→JRE17, bootJar) — 2026-06-01, PR `39186c5`

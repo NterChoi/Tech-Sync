@@ -10,6 +10,7 @@ import ScrapsPage from './pages/ScrapsPage';
 import WorkspacesPage from './pages/WorkspacesPage';
 import WorkspaceDetailPage from './pages/WorkspaceDetailPage';
 import WorkspaceEditorPage from './pages/WorkspaceEditorPage';
+import MyPage from './pages/MyPage';
 
 function Placeholder({ name }) {
   return (
@@ -39,6 +40,7 @@ export default function App() {
           <Route path="/workspaces" element={<WorkspacesPage />} />
           <Route path="/workspaces/:id" element={<WorkspaceDetailPage />} />
           <Route path="/workspaces/:id/edit" element={<WorkspaceEditorPage />} />
+          <Route path="/mypage" element={<MyPage />} />
         </Route>
         <Route path="*" element={<Placeholder name="404" />} />
       </Routes>
