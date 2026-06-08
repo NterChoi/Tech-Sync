@@ -8,23 +8,21 @@
 
 ## 현재 상태
 
-- 마지막 업데이트: 2026-06-08
+- 마지막 업데이트: 2026-06-09
 - 현재 브랜치: `develop`
-- **🚀 배포 스프린트 (목표: 2026-06-11 최종 배포)** — 배포 대상 EC2 → **Oracle Cloud Always Free(ARM)** 로 변경
+- **🚀 배포 스프린트 (목표: 2026-06-11 최종 배포)** — 배포 대상 EC2 → Oracle Cloud(ARM) → **GCP Compute Engine(e2-medium, 서울)** 로 재변경
 - 5/28 발표 대비 작업(2-2c/2-2d) 완료, 발표 후 정리 커밋 2개(IME 가드 픽스 / 회원가입 흐름 변경)
 
-### 이어받기 메모 (2026-06-08, 윈도우 환경)
-- 6/4 Phase 5 기본 마이페이지 완료 (커밋 `214aaf4`, push 완료) — 실DB E2E 검증 통과
-- 6/8 추가 작업 (아직 **커밋 전**, 워킹트리에 있음):
-  - **배포 대상 EC2 → Oracle Cloud Always Free(A1.Flex, ARM) 전환** — 코드/Dockerfile/compose 무변경(arm64 멀티아키), `docs/deploy.md` + `progress.md`만 수정
-  - **회원가입 온보딩(관심 키워드 선택)** 추가 — 프론트 전용:
-    - 신규: `OnboardingPage.jsx` (추천 키워드 칩 토글 + 시작하기/건너뛰기, 전체화면)
-    - 수정: `App.jsx`(`/onboarding` 보호 라우트), `LoginPage.jsx`(로그인 후 `getMyKeywords()` 0개면 온보딩으로 분기, 조회 실패 시 /feed 폴백)
-    - 트리거 = **구독 키워드 0개 기준**(A방식, 백엔드 무변경). 정확한 1회는 아니지만 건너뛰기로 이탈 가능
-    - 검증: `npm run build` + **Playwright 브라우저 E2E 통과**(가입→첫로그인→/onboarding→키워드2개선택→/feed, 재로그인 시 온보딩 건너뜀)
-- **Oracle Cloud A1 인스턴스 생성은 보류 중** — `Out of capacity` 로 미생성. 용량 풀릴 때 재시도 예정
-- **다음 착수: (1) 6/8 변경분 커밋 (2) Oracle VM 확보 후 1차 배포 리허설** → 통합 테스트 → 6/11 최종 배포
+### 이어받기 메모 (2026-06-09, 맥 환경)
+- 6/4 Phase 5 기본 마이페이지 완료 (커밋 `214aaf4`) / 6/8 회원가입 온보딩 완료 (커밋 `13c8616`) — 모두 push·머지 완료, 로컬 develop 동기화됨
+- **배포 대상 재변경: Oracle Cloud → GCP Compute Engine** (2026-06-09)
+  - 사유: Oracle Always Free A1 이 `Out of host capacity` 로 콘솔에서 인스턴스 생성 자체가 불가 → 마감(6/11) D-2 라 더 못 기다림
+  - GCP e2-medium(2vCPU/4GB), 서울 리전(asia-northeast3), Ubuntu 22.04, $300 무료 크레딧 범위
+  - **스택 무변경**: 단일 VM + docker compose 그대로. arm64→amd64 로 아키만 바뀌나 멀티아키라 Dockerfile/compose 무수정 (VM 위에서 `--build`)
+  - `docs/deploy.md` 를 GCP 기준으로 갱신 완료 (Oracle iptables 수동개방 함정 제거 — GCP 는 `http-server` 태그만으로 80 개방)
+- **다음 착수: GCP VM 생성 → 1차 배포 리허설 → 전 기능 E2E 통합 테스트 → 6/11 최종 배포**
   - 6/1에 배포 인프라(Phase 6) + Phase 3 SSE 알림은 이미 완료 (로컬 prod 스택 검증까지)
+  - `gcloud auth login` 은 인터랙티브 인증이라 사용자가 직접 실행해야 함
 
 ---
 
@@ -33,8 +31,8 @@
 > 전략: **배포 파이프라인을 먼저 띄우고 기능을 증분 배포로 얹는다.** 배포 인프라가 0인 상태라
 > 이것이 최대 리스크 → 현재 완성 앱을 6/4까지 EC2에 먼저 올려(1차 배포 리허설) 문제를 일찍 노출시킨다.
 
-### 확정된 범위 결정 (2026-06-01, 배포 대상은 2026-06-06 변경)
-- **배포 대상: Oracle Cloud Always Free (VM.Standard.A1.Flex, ARM)** — Docker 기반 (당초 AWS EC2 → 변경)
+### 확정된 범위 결정 (2026-06-01, 배포 대상은 2026-06-06 / 2026-06-09 2회 변경)
+- **배포 대상: GCP Compute Engine (e2-medium, 서울 asia-northeast3)** — Docker 기반 (AWS EC2 → Oracle Cloud A1 → GCP 로 변경. Oracle 은 capacity 확보 실패)
 - **Phase 3 알림: SSE 실시간 알림만** (Redis Pub/Sub + SseEmitter). Web Push(VAPID)는 **컷**
 - **마이페이지: 기본 범위** (내 정보 조회/수정 + 구독 키워드 관리)
 - **컷(의도적 제외)**: Web Push, OT Phase 2 서버 마이그레이션, 키워드 구독 별도 페이지
@@ -42,7 +40,7 @@
 ### 잔여 작업 4개
 | 구분 | 항목 | 상태 |
 |------|------|------|
-| 🔴 배포 인프라 | 백엔드 Dockerfile, 프론트 빌드+nginx, application-prod.yml, prod compose, VM 프로비저닝(Oracle Cloud) | 인프라 ✅ / 실배포만 잔여 |
+| 🔴 배포 인프라 | 백엔드 Dockerfile, 프론트 빌드+nginx, application-prod.yml, prod compose, VM 프로비저닝(GCP) | 인프라 ✅ / 실배포만 잔여 |
 | 🟡 기능 | Phase 3 SSE 알림 (Redis Pub/Sub + SSE) | 0% |
 | 🟡 기능 | 기본 마이페이지 | ✅ 2026-06-04 완료 |
 | 🟢 안정화 | 전 기능 E2E 통합 테스트 + 버그픽스 | — |
@@ -386,7 +384,7 @@
 - [x] application.yml prod 프로필 (`ddl-auto: ${DDL_AUTO:validate}`, 로깅↓) — 2026-06-01
 - [x] docker-compose.prod.yml (앱2 + DB3, 헬스체크 depends_on) — 2026-06-01
 - [x] **로컬 prod 스택 검증** — 격리 프로젝트로 기동, nginx(80) 경유 SPA/회원가입/로그인/인증API/WebSocket 전부 통과 (2026-06-01)
-- [ ] Oracle Cloud VM 프로비저닝 + 1차 배포 리허설 (docs/deploy.md 절차대로) — 배포 대상 EC2→Oracle 변경(2026-06-06)
+- [ ] GCP Compute Engine VM 프로비저닝 + 1차 배포 리허설 (docs/deploy.md 절차대로) — 배포 대상 EC2→Oracle(6/6)→GCP(6/9) 재변경. Oracle 은 `Out of host capacity` 로 확보 실패
 
 > 검증 중 발견: 플레이스홀더 JWT_SECRET이 하이픈 포함 시 Base64 디코딩 실패(`Illegal base64 character`).
 > → JWT_SECRET은 `openssl rand -base64 48` 형태의 Base64여야 함 (.env.prod.example에 명시).
@@ -433,6 +431,7 @@
 | 2026-05-26 | `DeltaBroadcast`에 `clientSeqNo` echo 필드 추가 | 자신의 ack 식별 + Phase 2 마이그레이션 시 서버가 transform 베이스로 활용 가능 (선제적 인터페이스) |
 | 2026-06-06 | 배포 대상을 AWS EC2 → **Oracle Cloud Always Free(A1.Flex, ARM)** 로 변경 | EC2 프리티어는 12개월 한정 + t2.micro 1GB라 DB 3개+JVM에 빠듯. Oracle Always Free는 영구 무료 + 최대 24GB RAM이라 docker-compose 스택 전체를 여유 있게 수용. 베이스 이미지 전부 arm64 멀티아키라 Dockerfile/compose 무수정으로 전환 가능(VM 위에서 빌드만 하면 됨) |
 | 2026-06-08 | 회원가입 온보딩 트리거를 **구독 키워드 0개 기준**으로(User에 onboarded 플래그 안 둠) | 백엔드 스키마 변경/마이그레이션 없이 신규 유저(0개)에게만 자연 노출. "정확한 최초 1회"는 아니지만 건너뛰기 버튼으로 이탈 가능해 데모 범위엔 충분. 마감 임박 시 최소 변경 우선 |
+| 2026-06-09 | 배포 대상을 Oracle Cloud A1 → **GCP Compute Engine(e2-medium, 서울)** 로 재변경 | Oracle Always Free A1 이 `Out of host capacity` 로 콘솔에서 인스턴스 생성 자체가 막힘(며칠째 미해소). 마감 6/11 D-2 라 더 기다릴 수 없어 즉시 확보 가능한 플랫폼으로 전환. GCP 는 $300 무료 크레딧 + 서울 리전(시연 지연 최소) + 4GB 로 스택 수용. 스택이 순수 docker-compose 라 단일 VM 이면 코드/Dockerfile 무수정으로 이식되고, arm64→amd64 는 멀티아키라 VM 위 `--build` 로 자동 흡수. GCP 는 VPC 방화벽이 게이트라 Oracle 의 인스턴스 내부 iptables 수동개방 함정도 사라짐 |
 
 ---
 
