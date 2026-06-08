@@ -11,6 +11,7 @@ import WorkspacesPage from './pages/WorkspacesPage';
 import WorkspaceDetailPage from './pages/WorkspaceDetailPage';
 import WorkspaceEditorPage from './pages/WorkspaceEditorPage';
 import MyPage from './pages/MyPage';
+import OnboardingPage from './pages/OnboardingPage';
 
 function Placeholder({ name }) {
   return (
@@ -27,6 +28,14 @@ export default function App() {
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route
+          path="/onboarding"
+          element={
+            <ProtectedRoute>
+              <OnboardingPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           element={
             <ProtectedRoute>

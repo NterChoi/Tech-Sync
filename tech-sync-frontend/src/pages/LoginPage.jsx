@@ -13,6 +13,7 @@ import {
 } from '@mui/material';
 import { useAuth } from '../store/AuthContext';
 import * as authApi from '../api/auth';
+import * as keywordsApi from '../api/keywords';
 
 export default function LoginPage() {
   const { signIn } = useAuth();
@@ -32,7 +33,16 @@ export default function LoginPage() {
     try {
       const tokens = await authApi.login({ email, password });
       signIn(tokens);
-      navigate(from, { replace: true });
+      // 구독 키워드가 하나도 없으면(신규 가입) 온보딩으로, 아니면 원래 목적지로.
+      // 키워드 조회 실패는 로그인을 막지 않고 기본 목적지로 폴백한다.
+      let dest = from;
+      try {
+        const myKeywords = await keywordsApi.getMyKeywords();
+        if (myKeywords.length === 0) dest = '/onboarding';
+      } catch {
+        // 무시: 기본 목적지로 진행
+      }
+      navigate(dest, { replace: true });
     } catch (err) {
       setError(err.response?.data?.message || '로그인에 실패했습니다.');
     } finally {
