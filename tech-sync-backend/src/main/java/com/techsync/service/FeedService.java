@@ -6,7 +6,7 @@ import org.springframework.data.domain.Pageable;
 
 public interface FeedService {
 
-    Page<ArticleResponse> getFeed(Long userId, Pageable pageable);
+    Page<ArticleResponse> getFeed(Long userId, String source, String keyword, Pageable pageable);
 
     Page<ArticleResponse> getScraps(Long userId, Pageable pageable);
 

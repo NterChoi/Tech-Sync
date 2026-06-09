@@ -23,8 +23,10 @@ public class FeedController {
     @GetMapping
     public ResponseEntity<ApiResponse<Page<ArticleResponse>>> getFeed(
             @AuthenticationPrincipal Long userId,
+            @RequestParam(required = false) String source,
+            @RequestParam(required = false) String keyword,
             @PageableDefault(size = 20, sort = "publishedAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        return ResponseEntity.ok(ApiResponse.success(feedService.getFeed(userId, pageable)));
+        return ResponseEntity.ok(ApiResponse.success(feedService.getFeed(userId, source, keyword, pageable)));
     }
 
     @GetMapping("/scraps")

@@ -27,7 +27,7 @@ public class FeedServiceImpl implements FeedService {
 
     @Override
     @Transactional(readOnly = true)
-    public Page<ArticleResponse> getFeed(Long userId, Pageable pageable) {
+    public Page<ArticleResponse> getFeed(Long userId, String source, String keyword, Pageable pageable) {
         List<String> keywords = keywordRepository.findByUserId(userId).stream()
                 .map(k -> k.getKeywordName())
                 .collect(Collectors.toList());
@@ -35,7 +35,7 @@ public class FeedServiceImpl implements FeedService {
         Set<String> scrapedIds = scrapRepository.findArticleIdByUserId(userId)
                 .stream().collect(Collectors.toSet());
 
-        return articleRepository.findFeedArticles(keywords, pageable)
+        return articleRepository.findFeed(keywords, source, keyword, pageable)
                 .map(article -> new ArticleResponse(article, scrapedIds.contains(article.getId())));
     }
 
