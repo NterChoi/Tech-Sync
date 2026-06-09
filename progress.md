@@ -22,9 +22,18 @@
     - 수정: `App.jsx`(`/onboarding` 보호 라우트), `LoginPage.jsx`(로그인 후 `getMyKeywords()` 0개면 온보딩으로 분기, 조회 실패 시 /feed 폴백)
     - 트리거 = **구독 키워드 0개 기준**(A방식, 백엔드 무변경). 정확한 1회는 아니지만 건너뛰기로 이탈 가능
     - 검증: `npm run build` + **Playwright 브라우저 E2E 통과**(가입→첫로그인→/onboarding→키워드2개선택→/feed, 재로그인 시 온보딩 건너뜀)
+  - **WBS 대조 후 미비 기능 2건 추가 구현** (아래):
+    - **#1 키워드 뉴스 도착 알림** (백엔드) — 수집기가 키워드별 신규 기사 저장 후 그 키워드 구독자에게 `alarmService.notify(.., "KEYWORD_NEWS", .., null)`. `KeywordRepository.findByKeywordName` 추가, `NaverNewsCollectorService`에 KeywordRepository+AlarmService 주입. 키워드당 1알림(건수 집계)
+      - 검증: 실제 수집기 구동 E2E 통과 — Java 구독자에게 "새 뉴스 97건 도착" 알림 GET /api/alarm 으로 확인(안읽음 1)
+    - **#2 아이디/비밀번호 찾기** (방식A: 이메일 발송 없이 본인확인 후 즉시 재설정)
+      - 아이디 찾기: 이름 → 가입 이메일 **마스킹** 반환 / 비번 재설정: 이메일+이름 일치 시 새 비번 즉시 설정 + refresh token 무효화
+      - 백엔드: `POST /api/auth/find-id`, `/api/auth/reset-password`(permitAll), DTO 3개, User.updatePassword, UserRepository.findByName, AuthServiceImplTest 3개
+      - 프론트: `FindAccountPage.jsx`(탭), api/auth.js, `/find-account` 라우트, 로그인 페이지 링크
+      - 검증: 단위테스트 통과 + Playwright 브라우저 E2E 통과(아이디찾기 마스킹/틀린이름 거부/재설정/구비번 거부/새비번 로그인)
 - **Oracle Cloud A1 인스턴스 생성은 보류 중** — `Out of capacity` 로 미생성. 용량 풀릴 때 재시도 예정
 - **다음 착수: (1) 6/8 변경분 커밋 (2) Oracle VM 확보 후 1차 배포 리허설** → 통합 테스트 → 6/11 최종 배포
   - 6/1에 배포 인프라(Phase 6) + Phase 3 SSE 알림은 이미 완료 (로컬 prod 스택 검증까지)
+  - 의도적 컷 잔존(WBS 대비): Web Push(VAPID)+알림채널설정, 비밀번호 변경(마이페이지), 실시간 채팅/Thread 댓글(협업), 스크랩 메모
 
 ---
 

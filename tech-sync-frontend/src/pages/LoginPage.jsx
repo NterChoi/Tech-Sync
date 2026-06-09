@@ -102,6 +102,11 @@ export default function LoginPage() {
                 회원가입
               </MuiLink>
             </Typography>
+            <Typography variant="body2" textAlign="center" color="text.secondary">
+              <MuiLink component={RouterLink} to="/find-account">
+                아이디 / 비밀번호 찾기
+              </MuiLink>
+            </Typography>
           </Stack>
         </CardContent>
       </Card>

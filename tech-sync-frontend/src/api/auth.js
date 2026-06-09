@@ -17,3 +17,13 @@ export function logout() {
     headers: { 'Refresh-Token': refreshToken },
   });
 }
+
+export function findId({ name }) {
+  return api
+    .post('/auth/find-id', { name }, { skipAuth: true })
+    .then((r) => r.data.data.emails);
+}
+
+export function resetPassword({ email, name, newPassword }) {
+  return api.post('/auth/reset-password', { email, name, newPassword }, { skipAuth: true });
+}

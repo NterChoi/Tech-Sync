@@ -1,9 +1,11 @@
 package com.techsync.service;
 
 import com.techsync.domain.Article;
+import com.techsync.domain.Keyword;
 import com.techsync.domain.KeywordMaster;
 import com.techsync.repository.ArticleRepository;
 import com.techsync.repository.KeywordMasterRepository;
+import com.techsync.repository.KeywordRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,6 +45,8 @@ public class NaverNewsCollectorService {
 
     private final ArticleRepository articleRepository;
     private final KeywordMasterRepository keywordMasterRepository;
+    private final KeywordRepository keywordRepository;
+    private final AlarmService alarmService;
     private final RestTemplate restTemplate;
 
     @Scheduled(initialDelay = 10000, fixedDelay = 3600000)  // 앱 시작 10초 후 첫 수집, 이후 1시간 간격
@@ -112,12 +116,33 @@ public class NaverNewsCollectorService {
             articleRepository.saveAll(toSave);
             log.debug("[NaverCollector] 키워드 '{}' — 저장: {}건, 중복 스킵: {}건",
                     keyword, toSave.size(), items.size() - toSave.size());
+
+            if (!toSave.isEmpty()) {
+                notifySubscribers(keyword, toSave.size());
+            }
             return toSave.size();
 
         } catch (Exception e) {
             log.error("[NaverCollector] 키워드 '{}' 수집 실패: {}", keyword, e.getMessage(), e);
             return 0;
         }
+    }
+
+    /** 해당 키워드 구독자에게 새 뉴스 도착 알림을 발행한다 (키워드당 1건, 건수 집계). */
+    private void notifySubscribers(String keyword, int newCount) {
+        List<Keyword> subscribers = keywordRepository.findByKeywordName(keyword);
+        if (subscribers.isEmpty()) return;
+
+        String message = String.format("구독하신 '%s' 키워드의 새 뉴스 %d건이 도착했어요.", keyword, newCount);
+        for (Keyword sub : subscribers) {
+            try {
+                alarmService.notify(sub.getUserId(), "KEYWORD_NEWS", message, null);
+            } catch (Exception e) {
+                log.warn("[NaverCollector] 키워드 '{}' 알림 발행 실패 (userId={}): {}",
+                        keyword, sub.getUserId(), e.getMessage());
+            }
+        }
+        log.debug("[NaverCollector] 키워드 '{}' 알림 발행 — 구독자 {}명", keyword, subscribers.size());
     }
 
     private LocalDateTime parseNaverDate(String pubDate) {

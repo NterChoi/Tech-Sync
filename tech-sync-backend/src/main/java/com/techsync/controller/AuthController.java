@@ -2,7 +2,10 @@ package com.techsync.controller;
 
 import com.techsync.dto.ApiResponse;
 import com.techsync.dto.AuthResponse;
+import com.techsync.dto.FindIdRequest;
+import com.techsync.dto.FindIdResponse;
 import com.techsync.dto.LoginRequest;
+import com.techsync.dto.ResetPasswordRequest;
 import com.techsync.dto.SignupRequest;
 import com.techsync.service.AuthService;
 import jakarta.validation.Valid;
@@ -40,6 +43,17 @@ public class AuthController {
     @PostMapping("/logout")
     public ResponseEntity<ApiResponse<Void>> logout(@RequestHeader("Refresh-Token") String refreshToken) {
         authService.logout(refreshToken);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @PostMapping("/find-id")
+    public ResponseEntity<ApiResponse<FindIdResponse>> findId(@Valid @RequestBody FindIdRequest request) {
+        return ResponseEntity.ok(ApiResponse.success(authService.findEmailsByName(request.name())));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<Void>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        authService.resetPassword(request.email(), request.name(), request.newPassword());
         return ResponseEntity.ok(ApiResponse.success(null));
     }
 }
