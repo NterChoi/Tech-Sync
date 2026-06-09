@@ -103,13 +103,18 @@ services:
     networks:
       - techsync-net
 
-  # ── Frontend (nginx 정적 + 리버스 프록시) ───────────────────
+  # ── Frontend (nginx 정적 + 리버스 프록시, HTTPS) ─────────────
   frontend:
     build:
       context: ./tech-sync-frontend
     restart: unless-stopped
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      # Let's Encrypt 인증서(호스트) 를 읽기전용으로 마운트. 발급 후 nginx 가 참조한다.
+      - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
     depends_on:
       - backend
     networks:
