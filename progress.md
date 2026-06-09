@@ -24,10 +24,18 @@
   - 프로젝트 `techsync-deploy-389a43`, 결제 계정 신규(`01A1DF-...`, 기존 계정은 closed 라 새로 개설)
   - VM: e2-medium(2vCPU/3.8GB), 서울 asia-northeast3-a, Ubuntu 22.04, **static IP `34.64.132.239`**(ephemeral→승격, 재시작에도 유지)
   - 방화벽 `allow-http`(tcp:80, http-server 태그). SSH 는 default-allow-ssh 로 기본 개방
-  - **접속 URL: http://34.64.132.239/** — frontend 200, backend `Started in 21s`(validate 통과), 긱뉴스 RSS·네이버 134건 수집 동작 확인
   - 첫 배포 `DDL_AUTO=update` 로 스키마 생성 후 주석처리→backend 재기동(validate) 완료
   - 함정 발견: `docker-compose-plugin` 이 Ubuntu apt 에 없음 → `curl get.docker.com | sh` 로 전환(deploy.md 반영). 부팅 직후 unattended-upgrades 가 apt 락 잡는 이슈도 있었음(잠시 후 해소)
-- **다음 착수: 전 기능 E2E 통합 테스트(배포된 URL 기준) → 6/11 최종 배포/제출**
+- **✅ 도메인 + HTTPS 적용 완료 (2026-06-09)** — **https://techsync.cloud**
+  - 도메인 `techsync.cloud` (가비아 구입), A 레코드 `@`/`www` → `34.64.132.239`
+  - GCP 방화벽 `allow-https`(443) 추가, Let's Encrypt 인증서(standalone 발급, ~2026-09-07 만료)
+  - nginx 80→443 리다이렉트 + ssl, 프론트는 상대경로(`/api`,`/ws`)라 코드 변경 0 (https/wss 자동)
+  - ⚠️ 인증서 갱신: 90일 만료. 자동갱신 미설정 — 장기 운영 시 webroot(`/var/www/certbot`) 기반 `certbot renew` cron 필요(데모 기간엔 무관)
+- **✅ E2E 통합 테스트 통과 (2026-06-09)** — http(IP)/https(도메인) 양쪽 **30/30 PASS**
+  - 검증: 인증·토큰재발급, 마이페이지, 키워드구독, 피드/스크랩, 워크스페이스 CRUD, 스냅샷/버전, 멤버초대→Redis Pub/Sub→MongoDB 알림 영속화, SSE 스트림 연결
+  - 미커버(육안 필요): 2-브라우저 실시간 공동편집/커서 동기화 — 시연 전 수동 확인 권장
+  - 테스트 데이터(E2E 계정/워크스페이스)가 prod DB에 남아 있음 — 필요 시 정리
+- **다음 착수: (1) 실시간 편집 2-브라우저 육안 확인 (2) 6/11 최종 제출**
   - 6/1에 배포 인프라(Phase 6) + Phase 3 SSE 알림은 이미 완료 (로컬 prod 스택 검증까지)
   - ⚠️ 시연/제출 종료 후 비용 절약 위해 `gcloud compute instances delete techsync` 또는 stop 할 것
 
@@ -47,7 +55,7 @@
 ### 잔여 작업 4개
 | 구분 | 항목 | 상태 |
 |------|------|------|
-| 🟢 배포 인프라 | 백엔드 Dockerfile, 프론트 빌드+nginx, application-prod.yml, prod compose, VM 프로비저닝(GCP) | ✅ 2026-06-09 GCP 1차 배포 완료 (http://34.64.132.239/) |
+| 🟢 배포 인프라 | 백엔드 Dockerfile, 프론트 빌드+nginx, application-prod.yml, prod compose, VM 프로비저닝(GCP), 도메인+HTTPS | ✅ 2026-06-09 완료 — **https://techsync.cloud** (Let's Encrypt) |
 | 🟡 기능 | Phase 3 SSE 알림 (Redis Pub/Sub + SSE) | 0% |
 | 🟡 기능 | 기본 마이페이지 | ✅ 2026-06-04 완료 |
 | 🟢 안정화 | 전 기능 E2E 통합 테스트 + 버그픽스 | — |
@@ -391,7 +399,8 @@
 - [x] application.yml prod 프로필 (`ddl-auto: ${DDL_AUTO:validate}`, 로깅↓) — 2026-06-01
 - [x] docker-compose.prod.yml (앱2 + DB3, 헬스체크 depends_on) — 2026-06-01
 - [x] **로컬 prod 스택 검증** — 격리 프로젝트로 기동, nginx(80) 경유 SPA/회원가입/로그인/인증API/WebSocket 전부 통과 (2026-06-01)
-- [x] GCP Compute Engine VM 프로비저닝 + 1차 배포 리허설 — 2026-06-09 완료. http://34.64.132.239/ 동작 확인(frontend 200, backend validate 통과, 뉴스 수집 동작). 배포 대상 EC2→Oracle(6/6)→GCP(6/9) 재변경(Oracle 은 `Out of host capacity` 로 확보 실패)
+- [x] GCP Compute Engine VM 프로비저닝 + 1차 배포 리허설 — 2026-06-09 완료. 배포 대상 EC2→Oracle(6/6)→GCP(6/9) 재변경(Oracle 은 `Out of host capacity` 로 확보 실패)
+- [x] 도메인 + HTTPS — 2026-06-09 완료. **https://techsync.cloud** (가비아 도메인, Let's Encrypt). E2E 30/30 통과(http/https 양쪽)
 
 > 검증 중 발견: 플레이스홀더 JWT_SECRET이 하이픈 포함 시 Base64 디코딩 실패(`Illegal base64 character`).
 > → JWT_SECRET은 `openssl rand -base64 48` 형태의 Base64여야 함 (.env.prod.example에 명시).

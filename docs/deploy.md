@@ -80,7 +80,46 @@ backend ──> mariadb:3306 / mongodb:27017 / redis:6379  (내부 네트워크 
    > JWT_SECRET 은 반드시 `openssl rand -base64 48` 형태의 Base64 여야 한다. 하이픈이 들어가면
    > `Illegal base64 character` 로 부팅 실패한다.
 
+## 도메인 + HTTPS (Let's Encrypt) — 배포 전 인증서 발급
+
+> nginx.conf 가 80→443 리다이렉트 + 443 ssl 구조라 **frontend 기동 전에 인증서가 있어야 한다**
+> (없으면 nginx 가 cert 파일을 못 찾아 시작 실패). 따라서 아래를 `docker compose up` **전에** 수행한다.
+
+1. **DNS A 레코드** (도메인 등록업체, 예: 가비아): `@`·`www` → VM 외부 IP(static).
+   전파 확인: `dig +short techsync.cloud @8.8.8.8`
+2. **방화벽 443 개방**:
+   ```bash
+   gcloud compute firewall-rules create allow-https --direction=INGRESS --action=ALLOW \
+     --rules=tcp:443 --source-ranges=0.0.0.0/0 --target-tags=http-server
+   ```
+3. **인증서 발급 (standalone)** — VM 에서 80 이 비어 있을 때(frontend 미기동 또는 `stop frontend`):
+   ```bash
+   sudo mkdir -p /var/www/certbot
+   sudo docker run --rm -p 80:80 \
+     -v /etc/letsencrypt:/etc/letsencrypt -v /var/www/certbot:/var/www/certbot \
+     certbot/certbot certonly --standalone \
+     -d techsync.cloud -d www.techsync.cloud \
+     --agree-tos -m <email> --no-eff-email --non-interactive
+   ```
+   → `/etc/letsencrypt/live/techsync.cloud/{fullchain,privkey}.pem` 생성. compose 의 frontend 가
+   `/etc/letsencrypt` 를 `:ro` 마운트해 참조한다.
+4. 이제 `docker compose ... up -d --build` 하면 frontend 가 443 으로 뜬다.
+
+> 이미 frontend 가 80 으로 떠 있는 상태에서 HTTPS 전환 시: `stop frontend` → 3번 발급 → `up -d --build frontend`.
+>
+> **인증서 갱신(90일)**: nginx 가 `/.well-known/acme-challenge/`(webroot `/var/www/certbot`)를 서빙하므로
+> 무중단 webroot 갱신이 가능하다:
+> ```bash
+> sudo docker run --rm -v /etc/letsencrypt:/etc/letsencrypt -v /var/www/certbot:/var/www/certbot \
+>   certbot/certbot renew --webroot -w /var/www/certbot
+> sudo docker compose -f docker-compose.prod.yml exec frontend nginx -s reload
+> ```
+> (최초가 standalone 발급이면 renewal conf 의 authenticator 가 standalone 이므로 위처럼 `--webroot` 명시.)
+
 ## 배포
+
+> ⚠️ 위 "도메인 + HTTPS" 의 인증서 발급(3번)을 먼저 끝낸 뒤 진행할 것. 안 그러면 frontend(nginx)가
+> cert 파일을 못 찾아 기동 실패한다.
 
 ```bash
 # 첫 배포 (스키마 생성): .env.prod 에 DDL_AUTO=update 설정한 상태
@@ -106,7 +145,7 @@ docker compose --env-file .env.prod -f docker-compose.prod.yml up -d --build
 
 ## 동작 확인 체크리스트
 
-- [ ] `http://<VM-external-IP>/` 접속 → 로그인 화면
+- [ ] `https://techsync.cloud/` 접속 → 로그인 화면 (자물쇠/인증서 정상), `http://` 는 301 리다이렉트
 - [ ] 회원가입 → 로그인 → 피드 표시
 - [ ] 워크스페이스 생성 → 에디터 진입 → 실시간 편집(2개 브라우저)
 - [ ] 커서 공유 표시
@@ -130,8 +169,9 @@ gcloud compute instances describe techsync --zone=asia-northeast3-a \
 - **아키텍처(amd64)**: GCP e2 는 x86_64. 모든 베이스 이미지(temurin17, node20-alpine, nginx,
   mariadb/mongo/redis)가 멀티아키라 **Dockerfile 수정 불필요**. compose 가 VM 위에서 `--build` 로
   amd64 이미지를 직접 빌드한다. (로컬에서 빌드한 이미지를 옮기지 말고 반드시 VM 위에서 빌드할 것.)
-- **HTTPS/wss**: 현재 HTTP 기준. 도메인 확보 시 nginx 앞단에 Let's Encrypt(certbot)를 두고
-  `wss://` 로 전환한다. SockJS 는 HTTP/HTTPS 자동 대응.
+- **HTTPS/wss**: 적용 완료(아래 "도메인 + HTTPS" 절 참조). nginx.conf 는 80→443 리다이렉트 +
+  443 ssl 구조라 **인증서가 있어야 frontend 가 기동**한다(없으면 nginx 시작 실패). 프론트는
+  상대경로(`/api`,`/ws`)라 https/wss 자동 전환되어 코드 변경이 없다.
 - **첫 부팅 validate 실패**: `Schema-validation: missing table` 로그가 보이면 DDL_AUTO=update 누락.
 - **SSE 가 끊김**: nginx `/api/alarm/subscribe` 블록의 `proxy_buffering off` 확인.
 - **메모리**: e2-medium 4GB 면 Mongo+Maria+JVM 동시 구동 가능. 빌드 중 OOM 이 보이면 스왑 2GB
