@@ -1,6 +1,7 @@
 package com.techsync.controller;
 
 import com.techsync.dto.ApiResponse;
+import com.techsync.dto.ChangePasswordRequest;
 import com.techsync.dto.UpdateUserRequest;
 import com.techsync.dto.UserResponse;
 import com.techsync.service.UserService;
@@ -26,5 +27,18 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserResponse>> updateMe(@AuthenticationPrincipal Long userId,
                                                               @Valid @RequestBody UpdateUserRequest request) {
         return ResponseEntity.ok(ApiResponse.success(userService.updateMe(userId, request)));
+    }
+
+    @PutMapping("/me/password")
+    public ResponseEntity<ApiResponse<Void>> changePassword(@AuthenticationPrincipal Long userId,
+                                                            @Valid @RequestBody ChangePasswordRequest request) {
+        userService.changePassword(userId, request.currentPassword(), request.newPassword());
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    @DeleteMapping("/me")
+    public ResponseEntity<ApiResponse<Void>> deleteAccount(@AuthenticationPrincipal Long userId) {
+        userService.deleteAccount(userId);
+        return ResponseEntity.ok(ApiResponse.success(null));
     }
 }

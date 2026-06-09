@@ -1,10 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Alert,
   Box,
   Button,
   Chip,
   CircularProgress,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogContentText,
+  DialogTitle,
   Divider,
   Paper,
   Stack,
@@ -16,7 +22,8 @@ import * as keywordsApi from '../api/keywords';
 import { useAuth } from '../store/AuthContext';
 
 export default function MyPage() {
-  const { updateUser } = useAuth();
+  const { updateUser, signOut } = useAuth();
+  const navigate = useNavigate();
 
   const [me, setMe] = useState(null);
   const [name, setName] = useState('');
@@ -29,6 +36,16 @@ export default function MyPage() {
   const [recommended, setRecommended] = useState([]);
   const [myKeywordNames, setMyKeywordNames] = useState(new Set());
   const [busyKeyword, setBusyKeyword] = useState(null);
+
+  // 비밀번호 변경
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [pwSaving, setPwSaving] = useState(false);
+
+  // 회원 탈퇴
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,6 +93,42 @@ export default function MyPage() {
       setError(err.response?.data?.message || '저장에 실패했습니다.');
     } finally {
       setSaving(false);
+    }
+  };
+
+  const pwValid =
+    currentPassword.length > 0 &&
+    newPassword.length >= 8 &&
+    newPassword === confirmPassword;
+
+  const handleChangePassword = async () => {
+    setPwSaving(true);
+    setError(null);
+    setNotice(null);
+    try {
+      await usersApi.changePassword({ currentPassword, newPassword });
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setNotice('비밀번호가 변경되었습니다.');
+    } catch (err) {
+      setError(err.response?.data?.message || '비밀번호 변경에 실패했습니다.');
+    } finally {
+      setPwSaving(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    setDeleting(true);
+    setError(null);
+    try {
+      await usersApi.deleteAccount();
+      signOut();
+      navigate('/login', { replace: true });
+    } catch (err) {
+      setError(err.response?.data?.message || '회원 탈퇴에 실패했습니다.');
+      setDeleting(false);
+      setDeleteOpen(false);
     }
   };
 
@@ -188,6 +241,86 @@ export default function MyPage() {
           </Box>
         )}
       </Paper>
+
+      {/* 비밀번호 변경 */}
+      <Paper variant="outlined" sx={{ p: 3, mt: 3 }}>
+        <Typography variant="h6" sx={{ mb: 2, fontWeight: 600 }}>
+          비밀번호 변경
+        </Typography>
+        <Stack spacing={2}>
+          <TextField
+            label="현재 비밀번호"
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            fullWidth
+            autoComplete="current-password"
+          />
+          <TextField
+            label="새 비밀번호"
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            fullWidth
+            autoComplete="new-password"
+            helperText="8자 이상"
+          />
+          <TextField
+            label="새 비밀번호 확인"
+            type="password"
+            value={confirmPassword}
+            onChange={(e) => setConfirmPassword(e.target.value)}
+            fullWidth
+            autoComplete="new-password"
+            error={confirmPassword.length > 0 && newPassword !== confirmPassword}
+            helperText={
+              confirmPassword.length > 0 && newPassword !== confirmPassword
+                ? '새 비밀번호가 일치하지 않습니다.'
+                : ' '
+            }
+          />
+          <Box>
+            <Button
+              variant="contained"
+              onClick={handleChangePassword}
+              disabled={!pwValid || pwSaving}
+            >
+              {pwSaving ? '변경 중…' : '비밀번호 변경'}
+            </Button>
+          </Box>
+        </Stack>
+      </Paper>
+
+      {/* 회원 탈퇴 */}
+      <Paper variant="outlined" sx={{ p: 3, mt: 3, borderColor: 'error.light' }}>
+        <Typography variant="h6" sx={{ mb: 1, fontWeight: 600, color: 'error.main' }}>
+          회원 탈퇴
+        </Typography>
+        <Typography color="text.secondary" sx={{ mb: 2, fontSize: 14 }}>
+          탈퇴 시 계정과 구독 키워드·스크랩·워크스페이스 참여 정보가 삭제되며 복구할 수
+          없습니다.
+        </Typography>
+        <Button color="error" variant="outlined" onClick={() => setDeleteOpen(true)}>
+          회원 탈퇴
+        </Button>
+      </Paper>
+
+      <Dialog open={deleteOpen} onClose={() => !deleting && setDeleteOpen(false)}>
+        <DialogTitle>정말 탈퇴하시겠습니까?</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            이 작업은 되돌릴 수 없습니다. 계정과 모든 관련 데이터가 영구 삭제됩니다.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteOpen(false)} disabled={deleting}>
+            취소
+          </Button>
+          <Button color="error" onClick={handleDeleteAccount} disabled={deleting}>
+            {deleting ? '처리 중…' : '탈퇴하기'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }

@@ -7,3 +7,11 @@ export function getMe() {
 export function updateMe({ name }) {
   return api.put('/users/me', { name }).then((r) => r.data.data);
 }
+
+export function changePassword({ currentPassword, newPassword }) {
+  return api.put('/users/me/password', { currentPassword, newPassword });
+}
+
+export function deleteAccount() {
+  return api.delete('/users/me');
+}

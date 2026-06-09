@@ -15,4 +15,6 @@ public interface KeywordRepository extends JpaRepository<Keyword, Long> {
     Optional<Keyword> findByUserIdAndKeywordName(Long userId, String keywordName);
 
     boolean existsByUserIdAndKeywordName(Long userId, String keywordName);
+
+    void deleteByUserId(Long userId);
 }
