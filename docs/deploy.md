@@ -62,9 +62,15 @@ backend ──> mariadb:3306 / mongodb:27017 / redis:6379  (내부 네트워크 
 
 4. **Docker + Compose 설치** (VM 안에서)
    ```bash
-   sudo apt-get update && sudo apt-get install -y docker.io docker-compose-plugin
-   sudo usermod -aG docker $USER   # 재로그인
+   # docker-compose-plugin 은 Ubuntu 기본 저장소에 없다(Docker 공식 repo 전용).
+   # 공식 설치 스크립트로 docker-ce + compose 플러그인 + buildx 를 한 번에 설치한다.
+   curl -fsSL https://get.docker.com | sudo sh
+   sudo usermod -aG docker $USER   # 재로그인(또는 docker 명령에 sudo 사용)
+   docker --version && docker compose version   # 확인
    ```
+   > ⚠️ `apt-get install docker.io docker-compose-plugin` 은 GCP/Ubuntu 22.04 에서 실패한다
+   > (`Unable to locate package docker-compose-plugin`). 위 공식 스크립트 방식을 쓸 것.
+   > 그룹 반영 전이면 `sudo docker compose ...` 로 실행한다.
 5. 코드 가져오기: `git clone <repo> && cd Tech-Sync`
 6. 환경변수 작성:
    ```bash

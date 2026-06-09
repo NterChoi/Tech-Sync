@@ -20,9 +20,16 @@
   - GCP e2-medium(2vCPU/4GB), 서울 리전(asia-northeast3), Ubuntu 22.04, $300 무료 크레딧 범위
   - **스택 무변경**: 단일 VM + docker compose 그대로. arm64→amd64 로 아키만 바뀌나 멀티아키라 Dockerfile/compose 무수정 (VM 위에서 `--build`)
   - `docs/deploy.md` 를 GCP 기준으로 갱신 완료 (Oracle iptables 수동개방 함정 제거 — GCP 는 `http-server` 태그만으로 80 개방)
-- **다음 착수: GCP VM 생성 → 1차 배포 리허설 → 전 기능 E2E 통합 테스트 → 6/11 최종 배포**
+- **✅ 1차 배포 리허설 완료 (2026-06-09, GCP)** — 실제 클라우드 배포 첫 성공
+  - 프로젝트 `techsync-deploy-389a43`, 결제 계정 신규(`01A1DF-...`, 기존 계정은 closed 라 새로 개설)
+  - VM: e2-medium(2vCPU/3.8GB), 서울 asia-northeast3-a, Ubuntu 22.04, **static IP `34.64.132.239`**(ephemeral→승격, 재시작에도 유지)
+  - 방화벽 `allow-http`(tcp:80, http-server 태그). SSH 는 default-allow-ssh 로 기본 개방
+  - **접속 URL: http://34.64.132.239/** — frontend 200, backend `Started in 21s`(validate 통과), 긱뉴스 RSS·네이버 134건 수집 동작 확인
+  - 첫 배포 `DDL_AUTO=update` 로 스키마 생성 후 주석처리→backend 재기동(validate) 완료
+  - 함정 발견: `docker-compose-plugin` 이 Ubuntu apt 에 없음 → `curl get.docker.com | sh` 로 전환(deploy.md 반영). 부팅 직후 unattended-upgrades 가 apt 락 잡는 이슈도 있었음(잠시 후 해소)
+- **다음 착수: 전 기능 E2E 통합 테스트(배포된 URL 기준) → 6/11 최종 배포/제출**
   - 6/1에 배포 인프라(Phase 6) + Phase 3 SSE 알림은 이미 완료 (로컬 prod 스택 검증까지)
-  - `gcloud auth login` 은 인터랙티브 인증이라 사용자가 직접 실행해야 함
+  - ⚠️ 시연/제출 종료 후 비용 절약 위해 `gcloud compute instances delete techsync` 또는 stop 할 것
 
 ---
 
@@ -40,7 +47,7 @@
 ### 잔여 작업 4개
 | 구분 | 항목 | 상태 |
 |------|------|------|
-| 🔴 배포 인프라 | 백엔드 Dockerfile, 프론트 빌드+nginx, application-prod.yml, prod compose, VM 프로비저닝(GCP) | 인프라 ✅ / 실배포만 잔여 |
+| 🟢 배포 인프라 | 백엔드 Dockerfile, 프론트 빌드+nginx, application-prod.yml, prod compose, VM 프로비저닝(GCP) | ✅ 2026-06-09 GCP 1차 배포 완료 (http://34.64.132.239/) |
 | 🟡 기능 | Phase 3 SSE 알림 (Redis Pub/Sub + SSE) | 0% |
 | 🟡 기능 | 기본 마이페이지 | ✅ 2026-06-04 완료 |
 | 🟢 안정화 | 전 기능 E2E 통합 테스트 + 버그픽스 | — |
@@ -384,7 +391,7 @@
 - [x] application.yml prod 프로필 (`ddl-auto: ${DDL_AUTO:validate}`, 로깅↓) — 2026-06-01
 - [x] docker-compose.prod.yml (앱2 + DB3, 헬스체크 depends_on) — 2026-06-01
 - [x] **로컬 prod 스택 검증** — 격리 프로젝트로 기동, nginx(80) 경유 SPA/회원가입/로그인/인증API/WebSocket 전부 통과 (2026-06-01)
-- [ ] GCP Compute Engine VM 프로비저닝 + 1차 배포 리허설 (docs/deploy.md 절차대로) — 배포 대상 EC2→Oracle(6/6)→GCP(6/9) 재변경. Oracle 은 `Out of host capacity` 로 확보 실패
+- [x] GCP Compute Engine VM 프로비저닝 + 1차 배포 리허설 — 2026-06-09 완료. http://34.64.132.239/ 동작 확인(frontend 200, backend validate 통과, 뉴스 수집 동작). 배포 대상 EC2→Oracle(6/6)→GCP(6/9) 재변경(Oracle 은 `Out of host capacity` 로 확보 실패)
 
 > 검증 중 발견: 플레이스홀더 JWT_SECRET이 하이픈 포함 시 Base64 디코딩 실패(`Illegal base64 character`).
 > → JWT_SECRET은 `openssl rand -base64 48` 형태의 Base64여야 함 (.env.prod.example에 명시).
