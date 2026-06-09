@@ -48,8 +48,19 @@
     - 백엔드: `POST /api/auth/find-id`, `/api/auth/reset-password`(permitAll), DTO 3개, User.updatePassword, UserRepository.findByName, AuthServiceImplTest 3개
     - 프론트: `FindAccountPage.jsx`(탭), api/auth.js, `/find-account` 라우트, 로그인 페이지 링크
     - 검증: 단위테스트 통과 + Playwright 브라우저 E2E 통과(아이디찾기 마스킹/틀린이름 거부/재설정/구비번 거부/새비번 로그인)
-  - ⚠️ 이 기능들은 아직 **운영(GCP) 미반영** — 다음 배포 시 함께 올릴 것
-- 의도적 컷 잔존(WBS 대비): Web Push(VAPID)+알림채널설정, 비밀번호 변경(마이페이지), 실시간 채팅/Thread 댓글(협업), 스크랩 메모
+  - ✅ **운영(GCP) 반영 완료 (2026-06-09)** — 아래 "기능 보강 4건" 배포 때 함께 올림
+- 의도적 컷 잔존(WBS 대비): Web Push(VAPID)+알림채널설정, 실시간 채팅/Thread 댓글(협업), 스크랩 메모
+
+### 기능 보강 4건 (2026-06-09, 맥 환경 — develop 직접 작업, 배포까지 완료)
+> 사용자 요청으로 미비점 4건 추가 구현 → 빌드/테스트 → develop 커밋 3개 push → GCP 운영 반영 → prod E2E 검증 완료.
+> 커밋 `feat(feed): 소스/키워드 필터링` / `fix(news): HTML 엔티티+검색어 보정` / `feat(mypage): 비번변경+회원탈퇴` (`2f8be66..77f74d0`)
+
+- **① 피드 소스/키워드 필터링** — `/api/feed?source=GEEK|NAVER&keyword=` 추가. 기존 정적 `@Query`를 `ArticleRepositoryCustom`/`Impl`(MongoTemplate 동적 쿼리)로 대체. FeedPage 상단에 `전체/GEEK/Naver + 구독 키워드` 단일선택 칩 필터 UI
+- **② HTML 엔티티 디코딩** — 수집 기사 제목/본문의 `&quot;` 등을 `HtmlUtils.htmlUnescape`로 디코딩(Naver+GEEK 수집기). 기존 prod MongoDB 1,048건 일괄 디코딩 완료(3건만 잔존, 정상 텍스트)
+- **③ 검색 정확도(`SEARCH_QUERY`)** — `KEYWORD_MASTER.SEARCH_QUERY` 컬럼 추가로 표시명과 검색어 분리. `Spring→"Spring 프레임워크"`, `Vue→"Vue.js"`, `React→"React.js"`로 검색(저장/구독매칭은 표시명 유지) → 계절 '봄' 등 무관 기사 혼입 방지. 기존 모호 키워드 NAVER 기사 590건 삭제(다음 수집부터 새 검색어로 교체)
+- **④ 마이페이지 비번변경/회원탈퇴** — `PUT /api/users/me/password`(현재비번 검증+세션 무효화), `DELETE /api/users/me`(키워드·스크랩·워크스페이스멤버십·refresh token 정리 후 계정 삭제). MyPage에 비번변경 폼 + 탈퇴 확인 다이얼로그
+- 검증: 백엔드 32 테스트 통과(UserServiceImplTest 비번변경/탈퇴 3개 보강) + 프론트 빌드 + **prod 임시계정 E2E**(GEEK필터→78건 전부 GEEK, keyword=Docker→98건 전부 NAVER/Docker, 비번변경→새비번 재로그인, 회원탈퇴→탈퇴후 401) 후 자체 정리
+- 배포 메모: `SEARCH_QUERY` 컬럼 추가 위해 `DDL_AUTO=update` 1회 적용 후 validate 복귀. backend 정상 부팅(스키마 검증 통과)
 
 ---
 
@@ -382,10 +393,11 @@
 > +MongoDB 목록/안읽음 반영) 통과. SSE는 EventSource 헤더 제약 때문에 fetch-event-source로
 > Bearer 전송(SecurityConfig 무수정). nginx `/api/alarm/subscribe` 버퍼링 off로 즉시 flush.
 
-### Phase 5: 마이페이지 (배포 스프린트) ✅ 2026-06-04 완료
+### Phase 5: 마이페이지 (배포 스프린트) ✅ 2026-06-04 기본 완료 / 2026-06-09 비번변경·탈퇴 추가
 - [x] 내 정보 조회/수정 API (`GET/PUT /api/users/me`) + 마이페이지
 - [x] 구독 키워드 관리 (기존 `/api/keywords` API 재사용, 추천 칩 토글)
-- [~] ~~비밀번호 변경~~ — **컷** (기본 범위 외)
+- [x] 비밀번호 변경 (`PUT /api/users/me/password`) — 2026-06-09 추가 (현재비번 검증 + 세션 무효화)
+- [x] 회원 탈퇴 (`DELETE /api/users/me`) — 2026-06-09 추가 (키워드·스크랩·멤버십·토큰 정리 후 계정 삭제)
 
 **구현 파일:**
 
@@ -459,6 +471,9 @@
 | 2026-05-26 | `DeltaBroadcast`에 `clientSeqNo` echo 필드 추가 | 자신의 ack 식별 + Phase 2 마이그레이션 시 서버가 transform 베이스로 활용 가능 (선제적 인터페이스) |
 | 2026-06-06 | 배포 대상을 AWS EC2 → **Oracle Cloud Always Free(A1.Flex, ARM)** 로 변경 | EC2 프리티어는 12개월 한정 + t2.micro 1GB라 DB 3개+JVM에 빠듯. Oracle Always Free는 영구 무료 + 최대 24GB RAM이라 docker-compose 스택 전체를 여유 있게 수용. 베이스 이미지 전부 arm64 멀티아키라 Dockerfile/compose 무수정으로 전환 가능(VM 위에서 빌드만 하면 됨) |
 | 2026-06-08 | 회원가입 온보딩 트리거를 **구독 키워드 0개 기준**으로(User에 onboarded 플래그 안 둠) | 백엔드 스키마 변경/마이그레이션 없이 신규 유저(0개)에게만 자연 노출. "정확한 최초 1회"는 아니지만 건너뛰기 버튼으로 이탈 가능해 데모 범위엔 충분. 마감 임박 시 최소 변경 우선 |
+| 2026-06-09 | 피드 소스/키워드 필터를 정적 `@Query` 대신 `ArticleRepositoryCustom`+MongoTemplate 동적 쿼리로 | source(GEEK/NAVER)·keyword 조합이 늘면 `@Query` 메서드가 폭증. Criteria 동적 구성이 한 메서드로 모든 조합 처리 + 정렬/페이징은 Pageable 위임 |
+| 2026-06-09 | 검색 정확도를 `KEYWORD_MASTER.SEARCH_QUERY` 컬럼(표시명↔검색어 분리)으로 해결 | "Spring" 검색 시 계절 '봄' 기사 혼입. 검색 relevance는 완벽 해결 불가라 표시명은 유지하되 네이버 질의어만 보정("Spring 프레임워크"). 코드 하드코딩 맵보다 데이터로 관리 가능(DDL_AUTO=update 1회). 저장/구독매칭은 표시명 기준이라 피드 로직 무영향 |
+| 2026-06-09 | 회원 탈퇴 시 워크스페이스(OWNER)는 남기고 멤버십/키워드/스크랩/토큰만 정리 | 공유 워크스페이스를 OWNER 탈퇴로 일괄 삭제하면 다른 멤버 데이터까지 소실. 데모 범위에선 owner 잔존(dangling ownerId)이 허용 가능, 멤버십만 제거해 부작용 최소화 |
 | 2026-06-09 | 배포 대상을 Oracle Cloud A1 → **GCP Compute Engine(e2-medium, 서울)** 로 재변경 | Oracle Always Free A1 이 `Out of host capacity` 로 콘솔에서 인스턴스 생성 자체가 막힘(며칠째 미해소). 마감 6/11 D-2 라 더 기다릴 수 없어 즉시 확보 가능한 플랫폼으로 전환. GCP 는 $300 무료 크레딧 + 서울 리전(시연 지연 최소) + 4GB 로 스택 수용. 스택이 순수 docker-compose 라 단일 VM 이면 코드/Dockerfile 무수정으로 이식되고, arm64→amd64 는 멀티아키라 VM 위 `--build` 로 자동 흡수. GCP 는 VPC 방화벽이 게이트라 Oracle 의 인스턴스 내부 iptables 수동개방 함정도 사라짐 |
 
 ---
