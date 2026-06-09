@@ -15,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.util.HtmlUtils;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.net.URI;
@@ -61,17 +62,18 @@ public class NaverNewsCollectorService {
         int totalSaved = 0;
 
         for (KeywordMaster keyword : keywords) {
-            int saved = collectByKeyword(keyword.getKeywordName());
+            // 검색은 보정된 질의어(getEffectiveQuery)로, 저장/구독매칭은 표시명(keywordName)으로 한다.
+            int saved = collectByKeyword(keyword.getKeywordName(), keyword.getEffectiveQuery());
             totalSaved += saved;
         }
 
         log.info("[NaverCollector] 네이버 뉴스 수집 완료 — 총 저장: {}건", totalSaved);
     }
 
-    private int collectByKeyword(String keyword) {
+    private int collectByKeyword(String keyword, String searchQuery) {
         try {
             URI uri = UriComponentsBuilder.fromUriString(naverNewsUrl)
-                    .queryParam("query", keyword)
+                    .queryParam("query", searchQuery)
                     .queryParam("display", 100)
                     .queryParam("sort", "date")
                     .build()
@@ -150,8 +152,10 @@ public class NaverNewsCollectorService {
         return ZonedDateTime.parse(pubDate, NAVER_DATE_FORMAT).toLocalDateTime();
     }
 
+    /** 네이버 응답의 &lt;b&gt; 태그 제거 + HTML 엔티티(&amp;quot; 등) 디코딩. */
     private String stripHtmlTags(String text) {
         if (text == null) return null;
-        return text.replaceAll("<[^>]*>", "");
+        String withoutTags = text.replaceAll("<[^>]*>", "");
+        return HtmlUtils.htmlUnescape(withoutTags);
     }
 }

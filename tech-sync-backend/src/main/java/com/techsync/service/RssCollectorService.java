@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.HtmlUtils;
 
 import java.net.URL;
 import java.time.LocalDateTime;
@@ -48,9 +49,9 @@ public class RssCollectorService {
                 toSave.add(Article.builder()
                         .sourceId(sourceId)
                         .source(SOURCE_GEEK)
-                        .title(entry.getTitle())
+                        .title(unescape(entry.getTitle()))
                         .link(entry.getLink())
-                        .description(entry.getDescription() != null ? entry.getDescription().getValue() : null)
+                        .description(entry.getDescription() != null ? unescape(entry.getDescription().getValue()) : null)
                         .publishedAt(toLocalDateTime(entry.getPublishedDate()))
                         .collectedAt(LocalDateTime.now())
                         .build());
@@ -68,5 +69,10 @@ public class RssCollectorService {
     private LocalDateTime toLocalDateTime(Date date) {
         if (date == null) return null;
         return date.toInstant().atZone(ZoneId.of("Asia/Seoul")).toLocalDateTime();
+    }
+
+    /** HTML 엔티티(&amp;quot; 등) 디코딩. */
+    private String unescape(String text) {
+        return text == null ? null : HtmlUtils.htmlUnescape(text);
     }
 }
